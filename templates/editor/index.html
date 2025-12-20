@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Editor - Edit, Merge, Split & Filter</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 CSV Editor</h1>
+            <p>Edit, Merge, Split, Filter and Preprocess CSV files with AI</p>
+        </header>
+
+        <!-- File Upload Section -->
+        <section class="card upload-section">
+            <h2>Upload CSV Files</h2>
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="fileInput" multiple accept=".csv" style="display: none;">
+                <div class="upload-content">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>Drag & drop CSV files here or click to browse</p>
+                    <p class="upload-hint">You can select multiple files</p>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+        </section>
+
+        <!-- Files List Section -->
+        <section class="card">
+            <h2>Uploaded Files</h2>
+            <div id="filesList" class="files-list"></div>
+        </section>
+
+        <!-- Main Editor Section -->
+        <section class="card" id="editorSection" style="display: none;">
+            <div class="editor-header">
+                <h2 id="editorTitle">CSV Editor</h2>
+                <div class="editor-actions">
+                    <button class="btn btn-secondary" id="closeEditorBtn">Close</button>
+                    <button class="btn btn-primary" id="downloadBtn">Download</button>
+                </div>
+            </div>
+            <div id="editorContent"></div>
+        </section>
+
+        <!-- Merge Section -->
+        <section class="card" id="mergeSection" style="display: none;">
+            <h2>Merge CSV Files</h2>
+            <div class="form-group">
+                <label>Select files to merge:</label>
+                <div id="mergeFileCheckboxes"></div>
+            </div>
+            <div class="form-group">
+                <label>Merge Type:</label>
+                <select id="mergeType" class="form-control">
+                    <option value="concat">Concatenate (Stack vertically)</option>
+                    <option value="join">Join (Merge on column)</option>
+                </select>
+            </div>
+            <div class="form-group" id="joinColumnGroup" style="display: none;">
+                <label>Join Column:</label>
+                <input type="text" id="joinColumn" class="form-control" placeholder="Column name">
+            </div>
+            <div class="form-group">
+                <label>Output Name:</label>
+                <input type="text" id="mergeOutputName" class="form-control" value="merged_file.csv">
+            </div>
+            <button class="btn btn-primary" onclick="mergeFiles()">Merge Files</button>
+        </section>
+
+        <!-- Split Section -->
+        <section class="card" id="splitSection" style="display: none;">
+            <h2>Split CSV File</h2>
+            <div class="form-group">
+                <label>Select file:</label>
+                <select id="splitFileSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Split Type:</label>
+                <select id="splitType" class="form-control">
+                    <option value="rows">By Number of Rows</option>
+                    <option value="column">By Column Value</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label id="splitValueLabel">Rows per file:</label>
+                <input type="text" id="splitValue" class="form-control" placeholder="e.g., 1000">
+            </div>
+            <div class="form-group">
+                <label>Output Prefix:</label>
+                <input type="text" id="splitOutputPrefix" class="form-control" value="split_file">
+            </div>
+            <button class="btn btn-primary" onclick="splitFile()">Split File</button>
+        </section>
+
+        <!-- Filter Section -->
+        <section class="card" id="filterSection" style="display: none;">
+            <h2>Filter CSV File</h2>
+            <div class="form-group">
+                <label>Select file:</label>
+                <select id="filterFileSelect" class="form-control"></select>
+            </div>
+            <div id="filterConditions">
+                <div class="filter-condition">
+                    <select class="filter-column form-control" onchange="updateFilterColumns(this)">
+                        <option value="">Select column</option>
+                    </select>
+                    <select class="filter-operator form-control">
+                        <option value="equals">Equals</option>
+                        <option value="contains">Contains</option>
+                        <option value="greater">Greater Than</option>
+                        <option value="less">Less Than</option>
+                        <option value="not_null">Not Null</option>
+                        <option value="is_null">Is Null</option>
+                    </select>
+                    <input type="text" class="filter-value form-control" placeholder="Value">
+                    <button class="btn btn-danger" onclick="removeFilterCondition(this)">Remove</button>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="addFilterCondition()">Add Condition</button>
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Output Name:</label>
+                <input type="text" id="filterOutputName" class="form-control" value="filtered_file.csv">
+            </div>
+            <button class="btn btn-primary" onclick="filterFile()">Apply Filter</button>
+        </section>
+
+        <!-- AI Preprocess Section -->
+        <section class="card" id="aiSection" style="display: none;">
+            <h2>AI Preprocessing</h2>
+            <div class="form-group">
+                <label>Select file:</label>
+                <select id="aiFileSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Action:</label>
+                <select id="aiAction" class="form-control">
+                    <option value="analyze">Analyze Only</option>
+                    <option value="clean">Clean with Auto-fix</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="aiPreprocess()">Run AI Analysis</button>
+            <div id="aiResults" style="margin-top: 20px;"></div>
+        </section>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-action" onclick="showMergeSection()">🔀 Merge Files</button>
+            <button class="btn btn-action" onclick="showSplitSection()">✂️ Split File</button>
+            <button class="btn btn-action" onclick="showFilterSection()">🔍 Filter File</button>
+            <button class="btn btn-action" onclick="showAISection()">🤖 AI Preprocess</button>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+
