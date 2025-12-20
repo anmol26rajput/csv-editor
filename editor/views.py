@@ -306,6 +306,53 @@ def filter_file(request, file_id):
                 filtered_df = filtered_df[filtered_df[column].notna()]
             elif operator == 'is_null':
                 filtered_df = filtered_df[filtered_df[column].isna()]
+            elif operator == 'date_equals':
+                # Convert column to datetime and compare
+                try:
+                    filtered_df[column] = pd.to_datetime(filtered_df[column], errors='coerce')
+                    filter_date = pd.to_datetime(value, errors='coerce')
+                    if pd.notna(filter_date):
+                        filtered_df = filtered_df[filtered_df[column].dt.date == filter_date.date()]
+                    else:
+                        continue
+                except:
+                    continue
+            elif operator == 'date_before':
+                try:
+                    filtered_df[column] = pd.to_datetime(filtered_df[column], errors='coerce')
+                    filter_date = pd.to_datetime(value, errors='coerce')
+                    if pd.notna(filter_date):
+                        filtered_df = filtered_df[filtered_df[column] < filter_date]
+                    else:
+                        continue
+                except:
+                    continue
+            elif operator == 'date_after':
+                try:
+                    filtered_df[column] = pd.to_datetime(filtered_df[column], errors='coerce')
+                    filter_date = pd.to_datetime(value, errors='coerce')
+                    if pd.notna(filter_date):
+                        filtered_df = filtered_df[filtered_df[column] > filter_date]
+                    else:
+                        continue
+                except:
+                    continue
+            elif operator == 'date_remove':
+                # Remove rows matching the specific date
+                try:
+                    filtered_df[column] = pd.to_datetime(filtered_df[column], errors='coerce')
+                    filter_date = pd.to_datetime(value, errors='coerce')
+                    if pd.notna(filter_date):
+                        # Remove rows where date matches (keep others)
+                        filtered_df = filtered_df[
+                            (filtered_df[column].dt.date != filter_date.date()) | 
+                            (filtered_df[column].isna())
+                        ]
+                    else:
+                        continue
+                except Exception as e:
+                    # If date parsing fails, skip this filter
+                    continue
         
         # Save filtered file using ContentFile
         output_buffer = filtered_df.to_csv(index=False)

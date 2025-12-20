@@ -35,6 +35,16 @@ document.addEventListener('DOMContentLoaded', function() {
             input.placeholder = 'e.g., category';
         }
     });
+    
+    // Date filter file select change
+    const dateFilterFileSelect = document.getElementById('dateFilterFileSelect');
+    if (dateFilterFileSelect) {
+        dateFilterFileSelect.addEventListener('change', function() {
+            if (this.value) {
+                loadDateFilterColumns(parseInt(this.value));
+            }
+        });
+    }
 });
 
 // File Upload
@@ -138,7 +148,7 @@ function formatFileSize(bytes) {
 }
 
 function updateFileSelects() {
-    const selects = ['splitFileSelect', 'filterFileSelect', 'aiFileSelect'];
+    const selects = ['splitFileSelect', 'filterFileSelect', 'aiFileSelect', 'dateFilterFileSelect'];
     selects.forEach(selectId => {
         const select = document.getElementById(selectId);
         if (select) {
@@ -451,13 +461,17 @@ function addFilterCondition() {
         <select class="filter-column form-control" onchange="updateFilterColumns(this)">
             ${columnOptions}
         </select>
-        <select class="filter-operator form-control">
+        <select class="filter-operator form-control" onchange="updateFilterInputType(this)">
             <option value="equals">Equals</option>
             <option value="contains">Contains</option>
             <option value="greater">Greater Than</option>
             <option value="less">Less Than</option>
             <option value="not_null">Not Null</option>
             <option value="is_null">Is Null</option>
+            <option value="date_equals">Date Equals</option>
+            <option value="date_before">Date Before</option>
+            <option value="date_after">Date After</option>
+            <option value="date_remove">Remove Date</option>
         </select>
         <input type="text" class="filter-value form-control" placeholder="Value">
         <button class="btn btn-danger" onclick="removeFilterCondition(this)">Remove</button>
@@ -468,6 +482,26 @@ function addFilterCondition() {
 
 function removeFilterCondition(button) {
     button.parentElement.remove();
+}
+
+function updateFilterInputType(select) {
+    const valueInput = select.parentElement.querySelector('.filter-value');
+    const operator = select.value;
+    
+    if (operator.startsWith('date_')) {
+        valueInput.type = 'date';
+        if (operator === 'date_remove') {
+            valueInput.placeholder = 'Select date to remove';
+        } else {
+            valueInput.placeholder = 'Select date';
+        }
+    } else if (operator === 'not_null' || operator === 'is_null') {
+        valueInput.type = 'hidden';
+        valueInput.value = '';
+    } else {
+        valueInput.type = 'text';
+        valueInput.placeholder = 'Value';
+    }
 }
 
 function filterFile() {
@@ -516,6 +550,81 @@ function filterFile() {
     .catch(error => {
         console.error('Error:', error);
         alert('Error filtering file');
+    });
+}
+
+// Date Filter
+function showDateFilterSection() {
+    document.getElementById('dateFilterSection').style.display = 'block';
+    document.getElementById('dateFilterSection').scrollIntoView({ behavior: 'smooth' });
+    
+    const fileSelect = document.getElementById('dateFilterFileSelect');
+    if (fileSelect.value) {
+        loadDateFilterColumns(parseInt(fileSelect.value));
+    }
+}
+
+function loadDateFilterColumns(fileId) {
+    fetch(`/api/files/${fileId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const columnSelect = document.getElementById('dateFilterColumn');
+            columnSelect.innerHTML = '<option value="">Select date column</option>' + 
+                data.columns.map(col => `<option value="${col}">${col}</option>`).join('');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+
+function applyDateFilter() {
+    const fileId = document.getElementById('dateFilterFileSelect').value;
+    const column = document.getElementById('dateFilterColumn').value;
+    const dateValue = document.getElementById('dateFilterValue').value;
+    const outputName = document.getElementById('dateFilterOutputName').value || 'date_filtered_file.csv';
+    
+    if (!fileId || !column || !dateValue) {
+        alert('Please select file, date column, and date value');
+        return;
+    }
+    
+    const resultDiv = document.getElementById('dateFilterResult');
+    resultDiv.innerHTML = '<div class="loading">Processing...</div>';
+    
+    fetch(`/api/files/${fileId}/filter/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            filters: [{
+                column: column,
+                operator: 'date_remove',
+                value: dateValue
+            }],
+            output_name: outputName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="suggestion-item success">
+                    <strong>Date Filter Applied Successfully!</strong><br>
+                    File created: ${data.file.name}<br>
+                    Original rows: ${data.original_rows}<br>
+                    Remaining rows: ${data.filtered_rows}<br>
+                    Removed: ${data.original_rows - data.filtered_rows} rows
+                </div>
+            `;
+            loadFiles();
+        } else {
+            resultDiv.innerHTML = `<div class="suggestion-item error">Error: ${data.error || 'Unknown error'}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        resultDiv.innerHTML = '<div class="suggestion-item error">Error processing date filter</div>';
     });
 }
 

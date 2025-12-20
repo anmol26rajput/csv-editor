@@ -111,13 +111,17 @@
                     <select class="filter-column form-control" onchange="updateFilterColumns(this)">
                         <option value="">Select column</option>
                     </select>
-                    <select class="filter-operator form-control">
+                    <select class="filter-operator form-control" onchange="updateFilterInputType(this)">
                         <option value="equals">Equals</option>
                         <option value="contains">Contains</option>
                         <option value="greater">Greater Than</option>
                         <option value="less">Less Than</option>
                         <option value="not_null">Not Null</option>
                         <option value="is_null">Is Null</option>
+                        <option value="date_equals">Date Equals</option>
+                        <option value="date_before">Date Before</option>
+                        <option value="date_after">Date After</option>
+                        <option value="date_remove">Remove Date</option>
                     </select>
                     <input type="text" class="filter-value form-control" placeholder="Value">
                     <button class="btn btn-danger" onclick="removeFilterCondition(this)">Remove</button>
@@ -129,6 +133,29 @@
                 <input type="text" id="filterOutputName" class="form-control" value="filtered_file.csv">
             </div>
             <button class="btn btn-primary" onclick="filterFile()">Apply Filter</button>
+        </section>
+
+        <!-- Date Filter Section -->
+        <section class="card" id="dateFilterSection" style="display: none;">
+            <h2>📅 Date Filter - Remove Entries by Date</h2>
+            <div class="form-group">
+                <label>Select file:</label>
+                <select id="dateFilterFileSelect" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Select Date Column:</label>
+                <select id="dateFilterColumn" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label>Select Date to Remove:</label>
+                <input type="date" id="dateFilterValue" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Output Name:</label>
+                <input type="text" id="dateFilterOutputName" class="form-control" value="date_filtered_file.csv">
+            </div>
+            <button class="btn btn-primary" onclick="applyDateFilter()">Remove Entries by Date</button>
+            <div id="dateFilterResult" style="margin-top: 15px;"></div>
         </section>
 
         <!-- AI Preprocess Section -->
@@ -154,6 +181,7 @@
             <button class="btn btn-action" onclick="showMergeSection()">🔀 Merge Files</button>
             <button class="btn btn-action" onclick="showSplitSection()">✂️ Split File</button>
             <button class="btn btn-action" onclick="showFilterSection()">🔍 Filter File</button>
+            <button class="btn btn-action" onclick="showDateFilterSection()">📅 Date Filter</button>
             <button class="btn btn-action" onclick="showAISection()">🤖 AI Preprocess</button>
         </div>
     </div>
