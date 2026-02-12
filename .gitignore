@@ -49,3 +49,5 @@ Thumbs.db
 .env
 .env.local
 
+**/migrations/*.py
+!**/migrations/__init__.py
