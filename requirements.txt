@@ -1,5 +1,8 @@
 Django==4.2.7
-pandas>=2.2.0
+pandas
+pypdf
+python-docx
+python-pptx
 python-decouple==3.8
 Pillow>=10.0.0
 

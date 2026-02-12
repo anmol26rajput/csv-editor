@@ -1,75 +1,123 @@
-let allFiles = [];
 let currentFile = null;
 let currentPage = 1;
 let totalPages = 1;
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
+// State Management
+const STATES = {
+    UPLOAD: 'uploadState',
+    ACTION_SELECT: 'actionSelectState',
+    EDITOR: 'editorState',
+    PDF_STUDIO: 'pdfStudioState',
+    RESULT: 'resultState'
+};
+
+const TOOLS = {
+    csv: [
+        { id: 'editor', icon: '📝', title: 'Edit Data', desc: 'View spreadsheet & edit cells', action: 'openEditor()' },
+        { id: 'split', icon: '✂️', title: 'Split', desc: 'Divide into smaller files', action: "showTool('splitSection')" },
+        { id: 'filter', icon: '🔍', title: 'Filter', desc: 'Filter rows by condition', action: "showTool('filterSection')" },
+        { id: 'date', icon: '📅', title: 'Date', desc: 'Remove by date range', action: "showTool('dateFilterSection')" },
+        { id: 'ai', icon: '✨', title: 'AI Clean', desc: 'Auto-fix & analyze', action: "showTool('aiSection')" }
+    ],
+    pdf: [
+        { id: 'split', icon: '✂️', title: 'Split Pages', desc: 'Extract pages to new PDF', action: "showTool('splitSection')" },
+        { id: 'merge', icon: '➕', title: 'Merge PDF', desc: 'Combine with another PDF', action: "startPdfMerge()" },
+        { id: 'edit', icon: '📝', title: 'Edit PDF', desc: 'Rotate, Delete, Reorder', action: "openPdfStudio()" }
+    ],
+    docx: [
+        { id: 'findReplace', icon: '🔎', title: 'Find & Replace', desc: 'Replace text content', action: "showTool('findReplaceSection')" }
+    ],
+    pptx: [
+        { id: 'findReplace', icon: '🔎', title: 'Find & Replace', desc: 'Replace text content', action: "showTool('findReplaceSection')" }
+    ]
+};
+
+document.addEventListener('DOMContentLoaded', function () {
     setupFileUpload();
-    loadFiles();
-    
-    // Close editor button
-    document.getElementById('closeEditorBtn').addEventListener('click', function() {
-        document.getElementById('editorSection').style.display = 'none';
+
+    // Initialize view
+    switchState(STATES.UPLOAD);
+
+    // Tool close buttons
+    document.querySelectorAll('.btn-close-tool').forEach(btn => {
+        btn.addEventListener('click', hideTools);
     });
-    
-    // Merge type change
-    document.getElementById('mergeType').addEventListener('change', function() {
-        const joinColumnGroup = document.getElementById('joinColumnGroup');
-        if (this.value === 'join') {
-            joinColumnGroup.style.display = 'block';
-        } else {
-            joinColumnGroup.style.display = 'none';
-        }
-    });
-    
-    // Split type change
-    document.getElementById('splitType').addEventListener('change', function() {
-        const label = document.getElementById('splitValueLabel');
-        const input = document.getElementById('splitValue');
-        if (this.value === 'rows') {
-            label.textContent = 'Rows per file:';
-            input.placeholder = 'e.g., 1000';
-        } else {
-            label.textContent = 'Column name to split by:';
-            input.placeholder = 'e.g., category';
-        }
-    });
-    
-    // Date filter file select change
-    const dateFilterFileSelect = document.getElementById('dateFilterFileSelect');
-    if (dateFilterFileSelect) {
-        dateFilterFileSelect.addEventListener('change', function() {
-            if (this.value) {
-                loadDateFilterColumns(parseInt(this.value));
-            }
-        });
-    }
 });
+
+function renderTools(fileType) {
+    const grid = document.getElementById('toolsGrid');
+    grid.innerHTML = '';
+
+    // Normalize fileType if needed or default to empty
+    let tools = TOOLS[fileType] || [];
+
+    // Fallback for generic logic if needed
+    if (fileType === 'doc') tools = TOOLS['docx'];
+    if (fileType === 'ppt') tools = TOOLS['pptx'];
+
+    if (tools.length === 0) {
+        grid.innerHTML = '<p class="text-muted">No tools available for this file type.</p>';
+        return;
+    }
+
+    tools.forEach(tool => {
+        const btn = document.createElement('button');
+        btn.className = 'tool-card glass-button';
+        btn.onclick = () => eval(tool.action); // simple eval for string action, can normally be function ref
+        btn.innerHTML = `
+            <div class="tool-icon">${tool.icon}</div>
+            <h3>${tool.title}</h3>
+            <p>${tool.desc}</p>
+        `;
+        grid.appendChild(btn);
+    });
+}
+
+
+function switchState(stateId) {
+    // Hide all states
+    Object.values(STATES).forEach(id => {
+        document.getElementById(id).style.display = 'none';
+    });
+
+    // Show target state
+    const stateEl = document.getElementById(stateId);
+    if (stateEl) {
+        stateEl.style.display = 'block';
+        stateEl.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function resetToUpload() {
+    currentFile = null;
+    document.getElementById('fileInput').value = '';
+    hideTools();
+    switchState(STATES.UPLOAD);
+}
 
 // File Upload
 function setupFileUpload() {
     const uploadArea = document.getElementById('uploadArea');
     const fileInput = document.getElementById('fileInput');
-    
+
     uploadArea.addEventListener('click', () => fileInput.click());
-    
+
     uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
         uploadArea.classList.add('drag-over');
     });
-    
+
     uploadArea.addEventListener('dragleave', () => {
         uploadArea.classList.remove('drag-over');
     });
-    
+
     uploadArea.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadArea.classList.remove('drag-over');
         const files = e.dataTransfer.files;
         handleFileUpload(files);
     });
-    
+
     fileInput.addEventListener('change', (e) => {
         handleFileUpload(e.target.files);
     });
@@ -77,66 +125,71 @@ function setupFileUpload() {
 
 function handleFileUpload(files) {
     const formData = new FormData();
-    Array.from(files).forEach(file => {
-        if (file.name.endsWith('.csv')) {
-            formData.append('files', file);
-        }
-    });
-    
+    // Only take the first file for now in this workflow, or handle multiple if needed
+    if (files.length > 0) {
+        formData.append('files', files[0]);
+    } else {
+        return; // invalid file
+    }
+
     if (formData.has('files')) {
+        // Show loading state if we had a spinner, but for now just wait
         fetch('/api/upload/', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+            .then(response => response.json())
+            .then(data => {
+                if (data.files && data.files.length > 0) {
+                    // Set current file and switch state
+                    currentFile = data.files[0];
+                    updateFileSummary(currentFile);
+                    renderTools(currentFile.file_type); // Render appropriate tools
+                    switchState(STATES.ACTION_SELECT);
+                } else {
+                    alert('Error uploading files: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error uploading files');
+            });
+    }
+}
+
+// ... (existing code) ...
+
+// 5. Find & Replace
+function applyFindReplace() {
+    const findText = document.getElementById('findText').value;
+    const replaceText = document.getElementById('replaceText').value;
+    const outputName = document.getElementById('findReplaceOutputName').value || 'modified_doc';
+
+    if (!findText) { alert('Find text is required'); return; }
+
+    fetch(`/api/files/${currentFile.id}/find-replace/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            find_text: findText,
+            replace_text: replaceText,
+            output_name: outputName
+        })
+    })
+        .then(r => r.json())
         .then(data => {
-            if (data.files) {
-                loadFiles();
+            if (data.success) {
+                showResult(`Replaced text successfully. Created ${data.file.name}`, data.file.id);
             } else {
-                alert('Error uploading files: ' + (data.error || 'Unknown error'));
+                alert('Error: ' + data.error);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error uploading files');
-        });
-    }
-}
-
-// Load Files
-function loadFiles() {
-    fetch('/api/files/')
-        .then(response => response.json())
-        .then(data => {
-            allFiles = data.files;
-            displayFiles(allFiles);
-            updateFileSelects();
-        })
-        .catch(error => {
-            console.error('Error:', error);
         });
 }
 
-function displayFiles(files) {
-    const filesList = document.getElementById('filesList');
-    if (files.length === 0) {
-        filesList.innerHTML = '<p>No files uploaded yet. Upload CSV files to get started.</p>';
-        return;
-    }
-    
-    filesList.innerHTML = files.map(file => `
-        <div class="file-card">
-            <h3>${file.name}</h3>
-            <div class="file-info">📊 ${file.row_count} rows × ${file.column_count} columns</div>
-            <div class="file-info">💾 ${formatFileSize(file.size)}</div>
-            <div class="file-info">📅 ${new Date(file.uploaded_at).toLocaleString()}</div>
-            <div class="file-actions">
-                <button class="btn btn-primary" onclick="openEditor(${file.id})">Edit</button>
-                <button class="btn btn-secondary" onclick="downloadFile(${file.id})">Download</button>
-                <button class="btn btn-danger" onclick="deleteFile(${file.id})">Delete</button>
-            </div>
-        </div>
-    `).join('');
+function updateFileSummary(file) {
+    document.getElementById('currentFileName').textContent = file.name;
+    document.getElementById('currentFileStats').textContent =
+        `${file.row_count} rows | ${file.column_count} columns | ${formatFileSize(file.size)}`;
 }
 
 function formatFileSize(bytes) {
@@ -147,39 +200,80 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
-function updateFileSelects() {
-    const selects = ['splitFileSelect', 'filterFileSelect', 'aiFileSelect', 'dateFilterFileSelect'];
-    selects.forEach(selectId => {
-        const select = document.getElementById(selectId);
-        if (select) {
-            select.innerHTML = '<option value="">Select a file</option>' + 
-                allFiles.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
-        }
-    });
-    
-    // Update merge checkboxes
-    const mergeCheckboxes = document.getElementById('mergeFileCheckboxes');
-    mergeCheckboxes.innerHTML = allFiles.map(f => `
-        <label style="display: block; margin: 5px 0;">
-            <input type="checkbox" value="${f.id}" class="merge-file-checkbox"> ${f.name}
-        </label>
-    `).join('');
+// Tool Handling
+function hideTools() {
+    document.querySelectorAll('.tool-panel').forEach(el => el.style.display = 'none');
 }
 
-// Editor
-function openEditor(fileId) {
-    currentFile = allFiles.find(f => f.id === fileId);
+function showTool(toolId) {
+    hideTools();
+    const toolEl = document.getElementById(toolId);
+    if (toolEl) {
+        toolEl.style.display = 'block';
+        // Pre-fill selects if needed (though we only have one file now)
+        initializeTool(toolId);
+        // Scroll to tool
+        document.getElementById('activeToolContainer').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function initializeTool(toolId) {
+    // Since we only work on currentFile, we don't need file selects anymore.
+    // But we might need to load columns.
+    if (!currentFile) return;
+
+    if (toolId === 'filterSection') {
+        loadColumnsForSelect(document.querySelector('#filterSection .filter-column'), currentFile.id);
+        // Clear previous conditions
+        document.getElementById('filterConditions').innerHTML = '';
+        addFilterCondition(); // Add one empty condition
+    } else if (toolId === 'dateFilterSection') {
+        loadColumnsForSelect(document.getElementById('dateFilterColumn'), currentFile.id);
+    } else if (toolId === 'splitSection') {
+        // Reset split fields
+    }
+}
+
+function loadColumnsForSelect(selectElement, fileId) {
+    fetch(`/api/files/${fileId}/`)
+        .then(response => response.json())
+        .then(data => {
+            const columns = data.columns;
+            const options = '<option value="">Select column</option>' +
+                columns.map(col => `<option value="${col}">${col}</option>`).join('');
+
+            if (selectElement) selectElement.innerHTML = options;
+
+            // If this is for filter conditions, we might need to update all existing selects
+            if (selectElement.classList.contains('filter-column')) {
+                // Helper to update specific select, handled by caller mostly
+            }
+        })
+        .catch(error => console.error('Error loading columns:', error));
+}
+
+
+// Editor State
+function openEditor() {
+    if (!currentFile) return;
+
+    switchState(STATES.EDITOR);
     currentPage = 1;
-    
-    fetch(`/api/files/${fileId}/data/?page=1&page_size=100`)
+    loadEditorData(1);
+    document.getElementById('editorFileName').textContent = currentFile.name;
+}
+
+function showActionSelect() {
+    switchState(STATES.ACTION_SELECT);
+}
+
+function loadEditorData(page) {
+    fetch(`/api/files/${currentFile.id}/data/?page=${page}&page_size=100`)
         .then(response => response.json())
         .then(data => {
             currentPage = data.current_page;
             totalPages = data.total_pages;
             displayTable(data.data, data.columns);
-            document.getElementById('editorTitle').textContent = `Editing: ${currentFile.name}`;
-            document.getElementById('editorSection').style.display = 'block';
-            document.getElementById('downloadBtn').onclick = () => downloadFile(fileId);
         })
         .catch(error => {
             console.error('Error:', error);
@@ -189,7 +283,7 @@ function openEditor(fileId) {
 
 function displayTable(data, columns) {
     const editorContent = document.getElementById('editorContent');
-    
+
     let html = `
         <div class="table-container">
             <table>
@@ -215,79 +309,62 @@ function displayTable(data, columns) {
             </table>
         </div>
         <div class="pagination">
-            <button class="btn btn-secondary" ${currentPage === 1 ? 'disabled' : ''} 
+            <button class="btn btn-secondary btn-sm" ${currentPage === 1 ? 'disabled' : ''} 
                     onclick="changePage(${currentPage - 1})">Previous</button>
             <span>Page ${currentPage} of ${totalPages}</span>
-            <button class="btn btn-secondary" ${currentPage === totalPages ? 'disabled' : ''} 
+            <button class="btn btn-secondary btn-sm" ${currentPage === totalPages ? 'disabled' : ''} 
                     onclick="changePage(${currentPage + 1})">Next</button>
         </div>
     `;
-    
+
     editorContent.innerHTML = html;
 }
 
 function changePage(page) {
-    if (page < 1 || page > totalPages || !currentFile) return;
-    
-    fetch(`/api/files/${currentFile.id}/data/?page=${page}&page_size=100`)
-        .then(response => response.json())
-        .then(data => {
-            currentPage = data.current_page;
-            displayTable(data.data, data.columns);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
+    if (page < 1 || page > totalPages) return;
+    loadEditorData(page);
 }
 
 function editCell(cell) {
     const currentValue = cell.textContent.trim();
     const rowIndex = parseInt(cell.dataset.row);
     const column = cell.dataset.col;
-    
+
     cell.classList.add('editing');
     cell.contentEditable = true;
     cell.focus();
-    
+
     const saveEdit = () => {
         const newValue = cell.textContent.trim();
         cell.contentEditable = false;
         cell.classList.remove('editing');
-        
+
         if (newValue !== currentValue) {
             fetch(`/api/files/${currentFile.id}/edit/`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     row_index: rowIndex,
                     column: column,
                     value: newValue
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    cell.textContent = newValue;
-                } else {
-                    alert('Error saving: ' + (data.error || 'Unknown error'));
-                    cell.textContent = currentValue;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                cell.textContent = currentValue;
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        cell.textContent = newValue;
+                    } else {
+                        alert('Error saving: ' + (data.error || 'Unknown error'));
+                        cell.textContent = currentValue;
+                    }
+                });
         }
     };
-    
+
     cell.addEventListener('blur', saveEdit, { once: true });
     cell.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            cell.blur();
-        } else if (e.key === 'Escape') {
+        if (e.key === 'Enter') { e.preventDefault(); cell.blur(); }
+        else if (e.key === 'Escape') {
             cell.textContent = currentValue;
             cell.contentEditable = false;
             cell.classList.remove('editing');
@@ -295,432 +372,541 @@ function editCell(cell) {
     }, { once: true });
 }
 
-// Merge Files
-function showMergeSection() {
-    document.getElementById('mergeSection').style.display = 'block';
-    document.getElementById('mergeSection').scrollIntoView({ behavior: 'smooth' });
-}
 
-function mergeFiles() {
-    const selectedFiles = Array.from(document.querySelectorAll('.merge-file-checkbox:checked'))
-        .map(cb => parseInt(cb.value));
-    
-    if (selectedFiles.length < 2) {
-        alert('Please select at least 2 files to merge');
-        return;
-    }
-    
-    const mergeType = document.getElementById('mergeType').value;
-    const joinColumn = document.getElementById('joinColumn').value;
-    const outputName = document.getElementById('mergeOutputName').value || 'merged_file.csv';
-    
-    const data = {
-        file_ids: selectedFiles,
-        merge_type: mergeType,
-        output_name: outputName
-    };
-    
-    if (mergeType === 'join' && joinColumn) {
-        data.join_column = joinColumn;
-    }
-    
-    fetch('/api/merge/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(`Files merged successfully! Created ${data.file.name} with ${data.row_count} rows.`);
-            loadFiles();
-        } else {
-            alert('Error merging files: ' + (data.error || 'Unknown error'));
+// Result State
+function showResult(message, fileId, isEdit = false) {
+    switchState(STATES.RESULT);
+    document.getElementById('resultMessage').textContent = message;
+
+    const downloadBtn = document.getElementById('resultDownloadBtn');
+    const downloadNote = document.getElementById('downloadNote');
+
+    if (fileId) {
+        downloadBtn.style.display = 'inline-flex';
+        downloadBtn.onclick = () => window.open(`/api/files/${fileId}/download/`, '_blank');
+
+        // Show initial note
+        if (downloadNote) {
+            downloadNote.style.display = 'block';
+            downloadNote.innerHTML = 'Download starting in 5 seconds...<br>If not triggered in 15 seconds, please click the button above.';
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error merging files');
-    });
+
+        // Auto Download Trigger (5 seconds)
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.href = `/api/files/${fileId}/download/`;
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }, 5000);
+
+        // Update note after 15 seconds (optional enhancement)
+        setTimeout(() => {
+            if (downloadNote) {
+                downloadNote.innerHTML = 'If download did not start automatically, please use the <strong>Download File</strong> button above.';
+            }
+        }, 15000);
+
+    } else {
+        downloadBtn.style.display = 'none';
+        if (downloadNote) downloadNote.style.display = 'none';
+    }
 }
 
-// Split File
-function showSplitSection() {
-    document.getElementById('splitSection').style.display = 'block';
-    document.getElementById('splitSection').scrollIntoView({ behavior: 'smooth' });
-}
 
+// Tool Actions
+
+// 1. Split
 function splitFile() {
-    const fileId = document.getElementById('splitFileSelect').value;
     const splitType = document.getElementById('splitType').value;
     const splitValue = document.getElementById('splitValue').value;
     const outputPrefix = document.getElementById('splitOutputPrefix').value || 'split_file';
-    
-    if (!fileId || !splitValue) {
-        alert('Please fill all required fields');
-        return;
-    }
-    
-    fetch(`/api/files/${fileId}/split/`, {
+
+    if (!splitValue) { alert('Please fill all required fields'); return; }
+
+    fetch(`/api/files/${currentFile.id}/split/`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             split_type: splitType,
             split_value: splitValue,
             output_prefix: outputPrefix
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(`File split successfully! Created ${data.count} files.`);
-            loadFiles();
-        } else {
-            alert('Error splitting file: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error splitting file');
-    });
-}
-
-// Filter File
-function showFilterSection() {
-    document.getElementById('filterSection').style.display = 'block';
-    document.getElementById('filterSection').scrollIntoView({ behavior: 'smooth' });
-    
-    const fileSelect = document.getElementById('filterFileSelect');
-    if (fileSelect.value) {
-        updateFilterColumns(fileSelect);
-    }
-}
-
-document.getElementById('filterFileSelect').addEventListener('change', function() {
-    if (this.value) {
-        loadFileColumns(parseInt(this.value), updateAllFilterColumns);
-    }
-});
-
-function loadFileColumns(fileId, callback) {
-    fetch(`/api/files/${fileId}/`)
         .then(response => response.json())
         .then(data => {
-            if (callback) callback(data.columns);
-        })
-        .catch(error => {
-            console.error('Error:', error);
+            if (data.success) {
+                let msg = `Split into ${data.count} files successfully!`;
+                let fileId = null;
+
+                // If we have files, allow downloading the first one at least
+                // In a real app we might zip them or list them all
+                if (data.files && data.files.length > 0) {
+                    fileId = data.files[0].id;
+                    if (data.files.length > 1) {
+                        msg += " (Downloading first part)";
+                    }
+                }
+
+                showResult(msg, fileId);
+            } else {
+                alert('Error: ' + data.error);
+            }
         });
 }
 
-function updateAllFilterColumns(columns) {
-    document.querySelectorAll('.filter-column').forEach(select => {
-        updateSelectOptions(select, columns);
-    });
-}
-
-function updateFilterColumns(select) {
-    const fileId = document.getElementById('filterFileSelect').value;
-    if (fileId) {
-        loadFileColumns(parseInt(fileId), (columns) => {
-            updateSelectOptions(select, columns);
-        });
-    }
-}
-
-function updateSelectOptions(select, columns) {
-    const currentValue = select.value;
-    select.innerHTML = '<option value="">Select column</option>' + 
-        columns.map(col => `<option value="${col}">${col}</option>`).join('');
-    if (currentValue && columns.includes(currentValue)) {
-        select.value = currentValue;
-    }
-}
-
+// 2. Filter
 function addFilterCondition() {
     const container = document.getElementById('filterConditions');
-    const fileId = document.getElementById('filterFileSelect').value;
-    
     const conditionDiv = document.createElement('div');
     conditionDiv.className = 'filter-condition';
-    
-    let columnOptions = '<option value="">Select column</option>';
-    if (fileId) {
-        loadFileColumns(parseInt(fileId), (columns) => {
-            columnOptions = '<option value="">Select column</option>' + 
-                columns.map(col => `<option value="${col}">${col}</option>`).join('');
-            conditionDiv.querySelector('.filter-column').innerHTML = columnOptions;
-        });
-    }
-    
-    conditionDiv.innerHTML = `
-        <select class="filter-column form-control" onchange="updateFilterColumns(this)">
-            ${columnOptions}
-        </select>
-        <select class="filter-operator form-control" onchange="updateFilterInputType(this)">
-            <option value="equals">Equals</option>
-            <option value="contains">Contains</option>
-            <option value="greater">Greater Than</option>
-            <option value="less">Less Than</option>
-            <option value="not_null">Not Null</option>
-            <option value="is_null">Is Null</option>
-            <option value="date_equals">Date Equals</option>
-            <option value="date_before">Date Before</option>
-            <option value="date_after">Date After</option>
-            <option value="date_remove">Remove Date</option>
-        </select>
-        <input type="text" class="filter-value form-control" placeholder="Value">
-        <button class="btn btn-danger" onclick="removeFilterCondition(this)">Remove</button>
-    `;
-    
-    container.appendChild(conditionDiv);
-}
 
-function removeFilterCondition(button) {
-    button.parentElement.remove();
+    // We need columns loaded
+    fetch(`/api/files/${currentFile.id}/`)
+        .then(r => r.json())
+        .then(data => {
+            const columns = data.columns;
+            conditionDiv.innerHTML = `
+                <select class="filter-column form-control">
+                    <option value="">Select column</option>
+                    ${columns.map(c => `<option value="${c}">${c}</option>`).join('')}
+                </select>
+                <select class="filter-operator form-control" onchange="updateFilterInputType(this)">
+                    <option value="equals">Equals</option>
+                    <option value="contains">Contains</option>
+                    <option value="greater">></option>
+                    <option value="less"><</option>
+                    <option value="not_null">Not Null</option>
+                    <option value="is_null">Is Null</option>
+                </select>
+                <input type="text" class="filter-value form-control" placeholder="Value">
+                <button class="btn-icon-danger" onclick="this.parentElement.remove()">×</button>
+            `;
+            container.appendChild(conditionDiv);
+        });
 }
 
 function updateFilterInputType(select) {
-    const valueInput = select.parentElement.querySelector('.filter-value');
-    const operator = select.value;
-    
-    if (operator.startsWith('date_')) {
-        valueInput.type = 'date';
-        if (operator === 'date_remove') {
-            valueInput.placeholder = 'Select date to remove';
-        } else {
-            valueInput.placeholder = 'Select date';
-        }
-    } else if (operator === 'not_null' || operator === 'is_null') {
-        valueInput.type = 'hidden';
-        valueInput.value = '';
+    const valInput = select.parentElement.querySelector('.filter-value');
+    if (['not_null', 'is_null'].includes(select.value)) {
+        valInput.style.display = 'none';
     } else {
-        valueInput.type = 'text';
-        valueInput.placeholder = 'Value';
+        valInput.style.display = 'block';
     }
 }
 
 function filterFile() {
-    const fileId = document.getElementById('filterFileSelect').value;
-    const outputName = document.getElementById('filterOutputName').value || 'filtered_file.csv';
-    
-    if (!fileId) {
-        alert('Please select a file');
-        return;
-    }
-    
-    const conditions = Array.from(document.querySelectorAll('.filter-condition')).map(condition => {
-        const column = condition.querySelector('.filter-column').value;
-        const operator = condition.querySelector('.filter-operator').value;
-        const value = condition.querySelector('.filter-value').value;
-        
-        if (!column || !operator) return null;
-        
-        return { column, operator, value };
-    }).filter(c => c !== null);
-    
-    if (conditions.length === 0) {
-        alert('Please add at least one filter condition');
-        return;
-    }
-    
-    fetch(`/api/files/${fileId}/filter/`, {
+    const outputName = document.getElementById('filterOutputName').value || 'filtered.csv';
+    const conditions = Array.from(document.querySelectorAll('.filter-condition')).map(el => ({
+        column: el.querySelector('.filter-column').value,
+        operator: el.querySelector('.filter-operator').value,
+        value: el.querySelector('.filter-value').value
+    })).filter(c => c.column && c.operator);
+
+    if (conditions.length === 0) { alert('Add at least one condition'); return; }
+
+    fetch(`/api/files/${currentFile.id}/filter/`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            filters: conditions,
-            output_name: outputName
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filters: conditions, output_name: outputName })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(`File filtered successfully! Created ${data.file.name} with ${data.filtered_rows} rows (from ${data.original_rows}).`);
-            loadFiles();
-        } else {
-            alert('Error filtering file: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error filtering file');
-    });
-}
-
-// Date Filter
-function showDateFilterSection() {
-    document.getElementById('dateFilterSection').style.display = 'block';
-    document.getElementById('dateFilterSection').scrollIntoView({ behavior: 'smooth' });
-    
-    const fileSelect = document.getElementById('dateFilterFileSelect');
-    if (fileSelect.value) {
-        loadDateFilterColumns(parseInt(fileSelect.value));
-    }
-}
-
-function loadDateFilterColumns(fileId) {
-    fetch(`/api/files/${fileId}/`)
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
-            const columnSelect = document.getElementById('dateFilterColumn');
-            columnSelect.innerHTML = '<option value="">Select date column</option>' + 
-                data.columns.map(col => `<option value="${col}">${col}</option>`).join('');
-        })
-        .catch(error => {
-            console.error('Error:', error);
+            if (data.success) {
+                showResult(`Filtered ${data.original_rows} rows down to ${data.filtered_rows} rows. Created ${data.file.name}`, data.file.id);
+            } else {
+                alert('Error: ' + data.error);
+            }
         });
 }
 
+// 3. Date Filter
+function updateDateFilterInputs() {
+    const mode = document.getElementById('dateFilterMode').value;
+
+    document.getElementById('dateInputSingle').style.display = mode === 'single' ? 'block' : 'none';
+    document.getElementById('dateInputRange').style.display = mode === 'range' ? 'grid' : 'none';
+    document.getElementById('dateInputMultiple').style.display = mode === 'multiple' ? 'block' : 'none';
+}
+
 function applyDateFilter() {
-    const fileId = document.getElementById('dateFilterFileSelect').value;
     const column = document.getElementById('dateFilterColumn').value;
-    const dateValue = document.getElementById('dateFilterValue').value;
-    const outputName = document.getElementById('dateFilterOutputName').value || 'date_filtered_file.csv';
-    
-    if (!fileId || !column || !dateValue) {
-        alert('Please select file, date column, and date value');
-        return;
+    const mode = document.getElementById('dateFilterMode').value;
+    const outputName = document.getElementById('dateFilterOutputName').value || 'date_filtered.csv';
+
+    if (!column) { alert('Select column'); return; }
+
+    let operator, value;
+
+    if (mode === 'single') {
+        operator = 'date_remove';
+        value = document.getElementById('dateFilterValue').value;
+        if (!value) { alert('Select a date'); return; }
+    } else if (mode === 'range') {
+        operator = 'date_range_remove';
+        const start = document.getElementById('dateFilterStart').value;
+        const end = document.getElementById('dateFilterEnd').value;
+        if (!start || !end) { alert('Select start and end dates'); return; }
+        value = `${start},${end}`;
+    } else if (mode === 'multiple') {
+        operator = 'date_list_remove';
+        value = document.getElementById('dateFilterList').value;
+        if (!value) { alert('Enter dates'); return; }
     }
-    
-    const resultDiv = document.getElementById('dateFilterResult');
-    resultDiv.innerHTML = '<div class="loading">Processing...</div>';
-    
-    fetch(`/api/files/${fileId}/filter/`, {
+
+    fetch(`/api/files/${currentFile.id}/filter/`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            filters: [{
-                column: column,
-                operator: 'date_remove',
-                value: dateValue
-            }],
+            filters: [{ column, operator, value }],
             output_name: outputName
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            resultDiv.innerHTML = `
-                <div class="suggestion-item success">
-                    <strong>Date Filter Applied Successfully!</strong><br>
-                    File created: ${data.file.name}<br>
-                    Original rows: ${data.original_rows}<br>
-                    Remaining rows: ${data.filtered_rows}<br>
-                    Removed: ${data.original_rows - data.filtered_rows} rows
-                </div>
-            `;
-            loadFiles();
-        } else {
-            resultDiv.innerHTML = `<div class="suggestion-item error">Error: ${data.error || 'Unknown error'}</div>`;
-        }
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showResult(`Filter Complete. Remaining rows: ${data.filtered_rows}`, data.file.id);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+}
+
+// 4. AI
+function aiPreprocess() {
+    const action = document.getElementById('aiAction').value;
+    const resultsDiv = document.getElementById('aiResults');
+    resultsDiv.innerHTML = '<div class="loading">Analyzing...</div>';
+
+    fetch(`/api/files/${currentFile.id}/ai-preprocess/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: action, auto_fix: action === 'clean' })
     })
-    .catch(error => {
-        console.error('Error:', error);
-        resultDiv.innerHTML = '<div class="suggestion-item error">Error processing date filter</div>';
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                if (data.file) {
+                    // Cleaned file created
+                    showResult(`AI Clean complete. Fixed issues and created ${data.file.name}`, data.file.id);
+                } else {
+                    // Just analysis
+                    let html = '';
+                    if (data.suggestions.length > 0) {
+                        data.suggestions.forEach(s => {
+                            html += `<div class="suggestion-item warning">
+                            <strong>${s.type}</strong>: ${s.suggestion}
+                        </div>`;
+                        });
+                    } else {
+                        html = '<div class="suggestion-item success">No issues found!</div>';
+                    }
+                    resultsDiv.innerHTML = html;
+                }
+            } else {
+                resultsDiv.innerHTML = `<div class="suggestion-item error">${data.error}</div>`;
+            }
+        });
+}
+
+// 6. PDF Studio
+let pdfDoc = null;
+let currentPages = []; // { index: 0, rotate: 0, deleted: false }
+
+function openPdfStudio() {
+    if (!currentFile || currentFile.file_type !== 'pdf') return;
+
+    switchState(STATES.PDF_STUDIO || 'pdfStudioState'); // Add to STATES if not present
+    document.getElementById('pdfFileName').textContent = currentFile.name;
+
+    // Load PDF
+    const url = `/api/files/${currentFile.id}/data/`; // We need a direct file URL actually
+    // For now we can use the download URL if it serves inline, or a new preview endpoint
+    // Let's assume /api/files/ID/download/ works for reading
+
+    const loadingTask = pdfjsLib.getDocument(`/api/files/${currentFile.id}/download/`);
+    loadingTask.promise.then(function (pdf) {
+        pdfDoc = pdf;
+        currentPages = Array.from({ length: pdf.numPages }, (_, i) => ({ index: i + 1, rotate: 0, deleted: false }));
+        renderPdfGrid();
+    }, function (reason) {
+        console.error(reason);
+        alert('Error loading PDF: ' + reason);
     });
 }
 
-// AI Preprocess
-function showAISection() {
-    document.getElementById('aiSection').style.display = 'block';
-    document.getElementById('aiSection').scrollIntoView({ behavior: 'smooth' });
+
+
+function renderPdfGrid() {
+    const grid = document.getElementById('pdfGrid');
+
+    // Save current scroll position if grid exists
+    const scrollPos = grid.scrollTop;
+
+    grid.innerHTML = '';
+
+    currentPages.forEach((pageConfig, i) => {
+        if (pageConfig.deleted) return;
+
+        const card = document.createElement('div');
+        card.className = 'pdf-page-card';
+        card.dataset.index = i;
+        card.dataset.id = pageConfig.index;
+
+        card.onclick = (e) => togglePageSelection(e, i);
+
+        // Canvas for thumbnail
+        const canvasContainer = document.createElement('div');
+        canvasContainer.className = 'page-thumbnail';
+        const canvas = document.createElement('canvas');
+        canvasContainer.appendChild(canvas);
+
+        // Page Number config
+        const pageNum = document.createElement('div');
+        pageNum.className = 'page-number';
+        pageNum.innerText = `Pg ${pageConfig.index}`;
+
+        // Rotation indicator
+        if (pageConfig.rotate !== 0) {
+            const rot = document.createElement('div');
+            rot.className = 'page-rotation-badge';
+            rot.innerText = `${pageConfig.rotate}°`;
+            card.appendChild(rot);
+        }
+
+        card.appendChild(canvasContainer);
+        card.appendChild(pageNum);
+        grid.appendChild(card);
+
+        // Render Page
+        pdfDoc.getPage(pageConfig.index).then(function (page) {
+            const viewport = page.getViewport({ scale: 0.3, rotation: pageConfig.rotate });
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderContext = {
+                canvasContext: canvas.getContext('2d'),
+                viewport: viewport
+            };
+            page.render(renderContext);
+        });
+    });
+
+    // Initialize Sortable if not already done
+
 }
 
-function aiPreprocess() {
-    const fileId = document.getElementById('aiFileSelect').value;
-    const action = document.getElementById('aiAction').value;
-    
-    if (!fileId) {
-        alert('Please select a file');
-        return;
+function togglePageSelection(e, listIndex) {
+    // If holding shift/ctrl is not supported yet, let's just do single select for move simplicity or keep multi select
+    // For manual move, single select is easier to understand: "Move page X to Y"
+
+    // Clear other selections if we want single select for move? 
+    // Let's keep multi-select for delete/rotate, but for move, maybe just take the first selected one or active one.
+
+    const card = document.querySelector(`.pdf-page-card[data-index="${listIndex}"]`);
+    if (card) {
+        card.classList.toggle('selected');
+
+        // Update Move Input with current index + 1
+        const input = document.getElementById('movePageInput');
+        if (input && card.classList.contains('selected')) {
+            // Find the visual page number (index + 1)
+            // But wait, listIndex is the index in currentPages. 
+            // If we have deleted pages, the visual number might differ? 
+            // "Pg X" on card is original index.
+            // The "Target Position" implies the order in the grid.
+
+            // Let's count how many non-deleted pages are before this one to get current visual position
+            const visualIndex = currentPages.slice(0, listIndex).filter(p => !p.deleted).length + 1;
+            // input.value = visualIndex; // Actually we want to enter TARGET, not current.
+            input.placeholder = `Current: ${visualIndex}`;
+        }
     }
-    
-    const resultsDiv = document.getElementById('aiResults');
-    resultsDiv.innerHTML = '<div class="loading">Analyzing file...</div>';
-    
-    fetch(`/api/files/${fileId}/ai-preprocess/`, {
+}
+
+function rotateSelected(deg) {
+    const selected = document.querySelectorAll('.pdf-page-card.selected');
+    if (selected.length === 0) return alert('Select pages first');
+
+    selected.forEach(card => {
+        const idx = parseInt(card.dataset.index);
+        currentPages[idx].rotate = (currentPages[idx].rotate + deg) % 360;
+    });
+    renderPdfGrid();
+}
+
+function deleteSelectedPages() {
+    const selected = document.querySelectorAll('.pdf-page-card.selected');
+    if (selected.length === 0) return alert('Select pages first');
+
+    if (!confirm(`Delete ${selected.length} pages?`)) return;
+
+    selected.forEach(card => {
+        const idx = parseInt(card.dataset.index);
+        currentPages[idx].deleted = true;
+    });
+    renderPdfGrid();
+}
+
+function savePdfChanges() {
+    // Construct page config for backend
+    // Valid pages only
+    const validPages = currentPages.filter(p => !p.deleted).map(p => ({
+        original_page_number: p.index, // 1-based
+        rotate: p.rotate
+    }));
+
+    if (validPages.length === 0) return alert('Cannot save empty PDF');
+
+    fetch(`/api/files/${currentFile.id}/organize-pdf/`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            type: action,
-            auto_fix: action === 'clean'
+            pages: validPages,
+            output_name: `organized_${currentFile.name}`
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            let html = '';
-            if (data.suggestions && data.suggestions.length > 0) {
-                html = '<h3>Analysis Results:</h3>';
-                data.suggestions.forEach(suggestion => {
-                    html += `
-                        <div class="suggestion-item">
-                            <strong>${suggestion.type.replace('_', ' ').toUpperCase()}</strong>
-                            ${suggestion.column ? `<br>Column: ${suggestion.column}` : ''}
-                            ${suggestion.count !== undefined ? `<br>Count: ${suggestion.count}` : ''}
-                            ${suggestion.percentage !== undefined ? `<br>Percentage: ${suggestion.percentage}%` : ''}
-                            <br><br>${suggestion.suggestion}
-                        </div>
-                    `;
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showResult(`PDF Saved! Created ${data.file.name}`, data.file.id);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+}
+
+function moveSelectedPage() {
+    const selected = document.querySelectorAll('.pdf-page-card.selected');
+    if (selected.length !== 1) return alert('Please select exactly one page to move.');
+
+    const targetInput = document.getElementById('movePageInput');
+    const targetPos = parseInt(targetInput.value);
+
+    if (!targetPos || targetPos < 1) return alert('Please enter a valid target position.');
+
+    // Get current visual list of non-deleted pages
+    const validPages = currentPages.map((p, i) => ({ ...p, originalArrayIndex: i })).filter(p => !p.deleted);
+
+    if (targetPos > validPages.length) return alert(`Target position must be between 1 and ${validPages.length}`);
+
+    const card = selected[0];
+    const originalArrayIndex = parseInt(card.dataset.index);
+
+    // Find where this page is in the validPages list
+    const currentVisualIndex = validPages.findIndex(p => p.originalArrayIndex === originalArrayIndex);
+
+    if (currentVisualIndex === -1) return; // Should not happen
+
+    // Calculate new index in validPages
+    const newVisualIndex = targetPos - 1;
+
+    if (currentVisualIndex === newVisualIndex) return; // No change
+
+    // Remove from validPages
+    const itemToMove = validPages.splice(currentVisualIndex, 1)[0];
+    // Insert at new position
+    validPages.splice(newVisualIndex, 0, itemToMove);
+
+    // Reconstruct currentPages
+    // We need to keep deleted pages where they are? Or just append them?
+    const deletedPages = currentPages.filter(p => p.deleted);
+
+    currentPages = [
+        ...validPages.map(p => ({ index: p.index, rotate: p.rotate, deleted: false })),
+        ...deletedPages
+    ];
+
+    renderPdfGrid();
+
+    // Restore selection?
+    // The index has changed, so dataset.index will change.
+    // We can rely on renderPdfGrid re-rendering.
+    targetInput.value = '';
+}
+
+// 7. PDF Merge
+function startPdfMerge() {
+    document.getElementById('mergeFileInput').click();
+}
+
+document.getElementById('mergeFileInput').addEventListener('change', function (e) {
+    if (this.files.length === 0) return;
+
+    const file = this.files[0];
+    const formData = new FormData();
+    formData.append('files', file); // Use 'files' key as expected by upload endpoint
+
+    // Show some loading...
+    const btn = document.querySelector('.pdf-studio-section .editor-toolbar .editor-actions button[onclick="startPdfMerge()"]');
+    let originalText = '➕ Merge PDF';
+
+    if (btn) {
+        originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ Uploading...';
+        btn.disabled = true;
+    }
+
+    // 1. Upload the second file
+    fetch('/api/upload/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken') // Ensure CSRF token is sent if needed
+        },
+        body: formData
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.files && data.files.length > 0) {
+                const newFile = data.files[0];
+                if (btn) btn.innerHTML = '✨ Merging...';
+
+                // 2. Call Merge Endpoint
+                return fetch('/api/merge/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_ids: [currentFile.id, newFile.id],
+                        output_name: `merged_${currentFile.name}`
+                    })
                 });
             } else {
-                html = '<div class="suggestion-item success">No issues found! Your CSV file looks clean.</div>';
+                throw new Error(data.error || 'Upload failed');
             }
-            
-            if (data.file) {
-                html += `<div class="suggestion-item success">
-                    <strong>Cleaned file created:</strong> ${data.file.name}<br>
-                    Actions taken: ${data.actions_taken.join(', ')}
-                </div>`;
-                loadFiles();
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showResult(`Merged successfully! Created ${data.file.name}`, data.file.id);
+            } else {
+                alert('Merge Error: ' + data.error);
             }
-            
-            resultsDiv.innerHTML = html;
-        } else {
-            resultsDiv.innerHTML = `<div class="suggestion-item error">Error: ${data.error || 'Unknown error'}</div>`;
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+        })
+        .finally(() => {
+            if (btn) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+            document.getElementById('mergeFileInput').value = '';
+        });
+});
+
+// Helper for CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        resultsDiv.innerHTML = '<div class="suggestion-item error">Error processing file</div>';
-    });
-}
-
-// Download File
-function downloadFile(fileId) {
-    window.open(`/api/files/${fileId}/download/`, '_blank');
-}
-
-// Delete File
-function deleteFile(fileId) {
-    if (!confirm('Are you sure you want to delete this file?')) {
-        return;
     }
-    
-    fetch(`/api/files/${fileId}/delete/`, {
-        method: 'DELETE'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadFiles();
-        } else {
-            alert('Error deleting file: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error deleting file');
-    });
+    return cookieValue;
 }
-

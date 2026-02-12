@@ -1,192 +1,326 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Editor - Edit, Merge, Split & Filter</title>
+    <title>CSV Editor - Simple & Fast</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 </head>
+
 <body>
-    <div class="container">
-        <header>
-            <h1>📊 CSV Editor</h1>
-            <p>Edit, Merge, Split, Filter and Preprocess CSV files with AI</p>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">
+                <svg class="logo-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <h1>CSV Editor</h1>
+            </div>
+            <p class="subtitle">Upload, Edit, Download. Simple as that.</p>
         </header>
 
-        <!-- File Upload Section -->
-        <section class="card upload-section">
-            <h2>Upload CSV Files</h2>
-            <div class="upload-area" id="uploadArea">
-                <input type="file" id="fileInput" multiple accept=".csv" style="display: none;">
-                <div class="upload-content">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    <p>Drag & drop CSV files here or click to browse</p>
-                    <p class="upload-hint">You can select multiple files</p>
+        <main>
+            <!-- STATE 1: UPLOAD -->
+            <div id="uploadState" class="view-state">
+                <section class="upload-section">
+                    <div class="upload-area glass-card" id="uploadArea">
+                        <input type="file" id="fileInput" accept=".csv, .pdf, .docx, .doc, .pptx, .ppt"
+                            style="display: none;">
+                        <div class="upload-content">
+                            <div class="upload-icon">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="1.5">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <h3>Upload Document</h3>
+                            <p class="upload-hint">Supported: CSV, PDF, Word, PowerPoint</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- STATE 2: ACTION SELECT -->
+            <div id="actionSelectState" class="view-state" style="display: none;">
+                <div class="file-summary-card glass-card">
+                    <div class="file-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                            <polyline points="13 2 13 9 20 9"></polyline>
+                        </svg>
+                    </div>
+                    <div class="file-details">
+                        <h3 id="currentFileName">filename.csv</h3>
+                        <p id="currentFileStats">0 rows | 0 cols</p>
+                    </div>
+                    <button class="btn btn-text" onclick="resetToUpload()">Change File</button>
+                </div>
+
+                <h2 class="section-title">What would you like to do?</h2>
+
+                <div class="tools-grid" id="toolsGrid">
+                    <!-- Tools injected via JS -->
+                </div>
+
+                <!-- Tool Panels Container -->
+                <div id="activeToolContainer" class="active-tool-container">
+
+                    <!-- Split Section -->
+                    <div class="tool-panel glass-card" id="splitSection" style="display: none;">
+                        <div class="panel-header">
+                            <h3>Split File</h3>
+                            <button class="btn-close-tool" onclick="hideTools()">×</button>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Split By</label>
+                                <select id="splitType" class="form-control">
+                                    <option value="rows">Row Count</option>
+                                    <option value="column">Column Value</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label id="splitValueLabel">Rows per file</label>
+                                <input type="text" id="splitValue" class="form-control" placeholder="1000">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Output Prefix</label>
+                            <input type="text" id="splitOutputPrefix" class="form-control" value="split">
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="splitFile()">Split File</button>
+                    </div>
+
+                    <!-- Filter Section -->
+                    <div class="tool-panel glass-card" id="filterSection" style="display: none;">
+                        <div class="panel-header">
+                            <h3>Filter Data</h3>
+                            <button class="btn-close-tool" onclick="hideTools()">×</button>
+                        </div>
+                        <div id="filterConditions" class="conditions-list">
+                            <!-- Conditions injected via JS -->
+                        </div>
+                        <div class="panel-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="addFilterCondition()">+ Add
+                                Condition</button>
+                        </div>
+                        <div class="form-group mt-4">
+                            <label>Output Filename</label>
+                            <input type="text" id="filterOutputName" class="form-control" value="filtered.csv">
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="filterFile()">Apply Filters</button>
+                    </div>
+
+                    <!-- Date Filter Section -->
+                    <div class="tool-panel glass-card" id="dateFilterSection" style="display: none;">
+                        <div class="panel-header">
+                            <h3>Remove by Date</h3>
+                            <button class="btn-close-tool" onclick="hideTools()">×</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Date Column</label>
+                            <select id="dateFilterColumn" class="form-control"></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Filter Mode</label>
+                            <select id="dateFilterMode" class="form-control" onchange="updateDateFilterInputs()">
+                                <option value="single">Single Date</option>
+                                <option value="range">Date Range</option>
+                                <option value="multiple">Multiple Dates</option>
+                            </select>
+                        </div>
+
+                        <!-- Single Date Input -->
+                        <div class="form-group" id="dateInputSingle">
+                            <label>Date to Remove</label>
+                            <input type="date" id="dateFilterValue" class="form-control">
+                        </div>
+
+                        <!-- Date Range Input -->
+                        <div class="form-row" id="dateInputRange" style="display: none;">
+                            <div class="form-group">
+                                <label>Start Date</label>
+                                <input type="date" id="dateFilterStart" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>End Date</label>
+                                <input type="date" id="dateFilterEnd" class="form-control">
+                            </div>
+                        </div>
+
+                        <!-- Multiple Dates Input -->
+                        <div class="form-group" id="dateInputMultiple" style="display: none;">
+                            <label>Dates to Remove (comma-separated)</label>
+                            <textarea id="dateFilterList" class="form-control" rows="3"
+                                placeholder="YYYY-MM-DD, YYYY-MM-DD"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Output Filename</label>
+                            <input type="text" id="dateFilterOutputName" class="form-control" value="date_filtered.csv">
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="applyDateFilter()">Remove Entries</button>
+                    </div>
+
+                    <!-- AI Section -->
+                    <div class="tool-panel glass-card" id="aiSection" style="display: none;">
+                        <div class="panel-header">
+                            <h3>AI Preprocessing</h3>
+                            <button class="btn-close-tool" onclick="hideTools()">×</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Action</label>
+                            <select id="aiAction" class="form-control">
+                                <option value="analyze">Analyze Only</option>
+                                <option value="clean">Clean & Auto-fix</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="aiPreprocess()">Run Analysis</button>
+                        <div id="aiResults" class="result-area"></div>
+                    </div>
+                    <!-- Find & Replace Section -->
+                    <div class="tool-panel glass-card" id="findReplaceSection" style="display: none;">
+                        <div class="panel-header">
+                            <h3>Find & Replace</h3>
+                            <button class="btn-close-tool" onclick="hideTools()">×</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Find Text</label>
+                            <input type="text" id="findText" class="form-control" placeholder="Text to find">
+                        </div>
+                        <div class="form-group">
+                            <label>Replace With</label>
+                            <input type="text" id="replaceText" class="form-control" placeholder="Replacement text">
+                        </div>
+                        <div class="form-group">
+                            <label>Output Filename</label>
+                            <input type="text" id="findReplaceOutputName" class="form-control" value="modified_doc">
+                        </div>
+                        <button class="btn btn-primary btn-block" onclick="applyFindReplace()">Apply Changes</button>
+                    </div>
                 </div>
             </div>
-            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Browse Files</button>
-        </section>
 
-        <!-- Files List Section -->
-        <section class="card">
-            <h2>Uploaded Files</h2>
-            <div id="filesList" class="files-list"></div>
-        </section>
-
-        <!-- Main Editor Section -->
-        <section class="card" id="editorSection" style="display: none;">
-            <div class="editor-header">
-                <h2 id="editorTitle">CSV Editor</h2>
-                <div class="editor-actions">
-                    <button class="btn btn-secondary" id="closeEditorBtn">Close</button>
-                    <button class="btn btn-primary" id="downloadBtn">Download</button>
+            <!-- STATE 3: EDITOR -->
+            <div id="editorState" class="view-state" style="display: none;">
+                <div class="editor-section glass-card">
+                    <div class="editor-toolbar">
+                        <div class="editor-info">
+                            <h2>Editor</h2>
+                            <span id="editorFileName" class="text-muted">filename.csv</span>
+                        </div>
+                        <div class="editor-actions">
+                            <button class="btn btn-text" onclick="showActionSelect()">Close</button>
+                            <button class="btn btn-primary"
+                                onclick="showResult('Edited File', currentFile.id, true)">Finish Editing</button>
+                        </div>
+                    </div>
+                    <div id="editorContent" class="editor-content"></div>
                 </div>
             </div>
-            <div id="editorContent"></div>
-        </section>
 
-        <!-- Merge Section -->
-        <section class="card" id="mergeSection" style="display: none;">
-            <h2>Merge CSV Files</h2>
-            <div class="form-group">
-                <label>Select files to merge:</label>
-                <div id="mergeFileCheckboxes"></div>
-            </div>
-            <div class="form-group">
-                <label>Merge Type:</label>
-                <select id="mergeType" class="form-control">
-                    <option value="concat">Concatenate (Stack vertically)</option>
-                    <option value="join">Join (Merge on column)</option>
-                </select>
-            </div>
-            <div class="form-group" id="joinColumnGroup" style="display: none;">
-                <label>Join Column:</label>
-                <input type="text" id="joinColumn" class="form-control" placeholder="Column name">
-            </div>
-            <div class="form-group">
-                <label>Output Name:</label>
-                <input type="text" id="mergeOutputName" class="form-control" value="merged_file.csv">
-            </div>
-            <button class="btn btn-primary" onclick="mergeFiles()">Merge Files</button>
-        </section>
+            <!-- STATE 3.5: PDF STUDIO -->
+            <div id="pdfStudioState" class="view-state" style="display: none;">
+                <div class="pdf-studio-section glass-card">
+                    <div class="editor-toolbar">
+                        <div class="editor-info">
+                            <h2>PDF Studio</h2>
+                            <span id="pdfFileName" class="text-muted">document.pdf</span>
+                        </div>
+                        <div class="editor-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="rotateSelected(-90)" title="Rotate Left">↺
+                                Left</button>
+                            <button class="btn btn-secondary btn-sm" onclick="rotateSelected(90)" title="Rotate Right">↻
+                                Right</button>
+                            <div class="divider"></div>
 
-        <!-- Split Section -->
-        <section class="card" id="splitSection" style="display: none;">
-            <h2>Split CSV File</h2>
-            <div class="form-group">
-                <label>Select file:</label>
-                <select id="splitFileSelect" class="form-control"></select>
-            </div>
-            <div class="form-group">
-                <label>Split Type:</label>
-                <select id="splitType" class="form-control">
-                    <option value="rows">By Number of Rows</option>
-                    <option value="column">By Column Value</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label id="splitValueLabel">Rows per file:</label>
-                <input type="text" id="splitValue" class="form-control" placeholder="e.g., 1000">
-            </div>
-            <div class="form-group">
-                <label>Output Prefix:</label>
-                <input type="text" id="splitOutputPrefix" class="form-control" value="split_file">
-            </div>
-            <button class="btn btn-primary" onclick="splitFile()">Split File</button>
-        </section>
+                            <!-- Manual Reorder -->
+                            <div class="toolbar-group">
+                                <input type="number" id="movePageInput" class="toolbar-input" placeholder="#" min="1">
+                                <button class="btn btn-secondary btn-sm" onclick="moveSelectedPage()">Move</button>
+                            </div>
 
-        <!-- Filter Section -->
-        <section class="card" id="filterSection" style="display: none;">
-            <h2>Filter CSV File</h2>
-            <div class="form-group">
-                <label>Select file:</label>
-                <select id="filterFileSelect" class="form-control"></select>
-            </div>
-            <div id="filterConditions">
-                <div class="filter-condition">
-                    <select class="filter-column form-control" onchange="updateFilterColumns(this)">
-                        <option value="">Select column</option>
-                    </select>
-                    <select class="filter-operator form-control" onchange="updateFilterInputType(this)">
-                        <option value="equals">Equals</option>
-                        <option value="contains">Contains</option>
-                        <option value="greater">Greater Than</option>
-                        <option value="less">Less Than</option>
-                        <option value="not_null">Not Null</option>
-                        <option value="is_null">Is Null</option>
-                        <option value="date_equals">Date Equals</option>
-                        <option value="date_before">Date Before</option>
-                        <option value="date_after">Date After</option>
-                        <option value="date_remove">Remove Date</option>
-                    </select>
-                    <input type="text" class="filter-value form-control" placeholder="Value">
-                    <button class="btn btn-danger" onclick="removeFilterCondition(this)">Remove</button>
+                            <div class="divider"></div>
+                            <button class="btn btn-danger-soft btn-sm" onclick="deleteSelectedPages()">🗑
+                                Delete</button>
+                            <div class="divider"></div>
+                            <button class="btn btn-primary btn-sm" onclick="startPdfMerge()">➕ Merge PDF</button>
+                            <button class="btn btn-text" onclick="showActionSelect()">Close</button>
+                            <button class="btn btn-primary" onclick="savePdfChanges()">Save Changes</button>
+                        </div>
+                    </div>
+                    <input type="file" id="mergeFileInput" accept=".pdf" style="display: none;">
+                    <div class="pdf-grid-container">
+                        <div id="pdfGrid" class="pdf-grid">
+                            <!-- Pages injected via JS -->
+                        </div>
+                    </div>
+                    <p class="text-muted text-center mt-3">
+                        <small>💡 Select a page, enter target page number, and click Move • Use toolbar actions</small>
+                    </p>
                 </div>
             </div>
-            <button class="btn btn-secondary" onclick="addFilterCondition()">Add Condition</button>
-            <div class="form-group" style="margin-top: 15px;">
-                <label>Output Name:</label>
-                <input type="text" id="filterOutputName" class="form-control" value="filtered_file.csv">
-            </div>
-            <button class="btn btn-primary" onclick="filterFile()">Apply Filter</button>
-        </section>
 
-        <!-- Date Filter Section -->
-        <section class="card" id="dateFilterSection" style="display: none;">
-            <h2>📅 Date Filter - Remove Entries by Date</h2>
-            <div class="form-group">
-                <label>Select file:</label>
-                <select id="dateFilterFileSelect" class="form-control"></select>
-            </div>
-            <div class="form-group">
-                <label>Select Date Column:</label>
-                <select id="dateFilterColumn" class="form-control"></select>
-            </div>
-            <div class="form-group">
-                <label>Select Date to Remove:</label>
-                <input type="date" id="dateFilterValue" class="form-control">
-            </div>
-            <div class="form-group">
-                <label>Output Name:</label>
-                <input type="text" id="dateFilterOutputName" class="form-control" value="date_filtered_file.csv">
-            </div>
-            <button class="btn btn-primary" onclick="applyDateFilter()">Remove Entries by Date</button>
-            <div id="dateFilterResult" style="margin-top: 15px;"></div>
-        </section>
+            <!-- STATE 4: RESULT -->
+            <div id="resultState" class="view-state" style="display: none;">
+                <div class="result-card glass-card">
+                    <div class="success-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <h2>Success!</h2>
+                    <p id="resultMessage">Your file has been processed.</p>
 
-        <!-- AI Preprocess Section -->
-        <section class="card" id="aiSection" style="display: none;">
-            <h2>AI Preprocessing</h2>
-            <div class="form-group">
-                <label>Select file:</label>
-                <select id="aiFileSelect" class="form-control"></select>
-            </div>
-            <div class="form-group">
-                <label>Action:</label>
-                <select id="aiAction" class="form-control">
-                    <option value="analyze">Analyze Only</option>
-                    <option value="clean">Clean with Auto-fix</option>
-                </select>
-            </div>
-            <button class="btn btn-primary" onclick="aiPreprocess()">Run AI Analysis</button>
-            <div id="aiResults" style="margin-top: 20px;"></div>
-        </section>
+                    <div class="result-actions">
+                        <button class="btn btn-primary btn-lg btn-block" id="resultDownloadBtn">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" style="margin-right: 12px;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download File
+                        </button>
 
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button class="btn btn-action" onclick="showMergeSection()">🔀 Merge Files</button>
-            <button class="btn btn-action" onclick="showSplitSection()">✂️ Split File</button>
-            <button class="btn btn-action" onclick="showFilterSection()">🔍 Filter File</button>
-            <button class="btn btn-action" onclick="showDateFilterSection()">📅 Date Filter</button>
-            <button class="btn btn-action" onclick="showAISection()">🤖 AI Preprocess</button>
-        </div>
+                        <p id="downloadNote"
+                            style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; display: none;">
+                            Download starting in 5 seconds...<br>
+                            If not triggered in 15 seconds, please click the button above.
+                        </p>
+
+                        <div class="secondary-actions">
+                            <button class="btn btn-secondary" onclick="resetToUpload()">Edit Another File</button>
+                            <button class="btn btn-text" onclick="location.reload()">Go Home</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
     </div>
 
     <script src="/static/js/main.js"></script>
 </body>
-</html>
 
+</html>
