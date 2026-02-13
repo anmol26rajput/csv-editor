@@ -6,3 +6,6 @@ python-pptx
 python-decouple==3.8
 Pillow>=10.0.0
 
+mammoth
+openpyxl
+docxcompose

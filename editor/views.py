@@ -50,7 +50,7 @@ def upload_document(request):
                 size=file.size
             )
             
-            # CSV Specific Logic
+            # CSV/Excel Specific Logic
             if ext == '.csv':
                 try:
                     df = pd.read_csv(file)
@@ -58,7 +58,14 @@ def upload_document(request):
                     doc.column_count = len(df.columns)
                     file.seek(0)  # Reset pointer
                 except Exception:
-                    # If CSV read fails, still save but maybe mark as error or just 0 rows
+                    pass
+            elif ext == '.xlsx':
+                try:
+                    df = pd.read_excel(file)
+                    doc.row_count = len(df)
+                    doc.column_count = len(df.columns)
+                    file.seek(0)
+                except Exception:
                     pass
             
             doc.save() # save() method in model handles file_type detection too
@@ -85,10 +92,14 @@ def get_file_info(request, file_id):
         
         response_data = document_to_dict(doc)
         
-        # CSV Specific Info
-        if doc.file_type == 'csv':
+        # CSV/Excel Specific Info
+        if doc.file_type in ['csv', 'xlsx']:
             try:
-                df = pd.read_csv(doc.file.path)
+                if doc.file_type == 'csv':
+                    df = pd.read_csv(doc.file.path)
+                else:
+                    df = pd.read_excel(doc.file.path)
+                
                 response_data.update({
                     'columns': list(df.columns),
                     'sample_data': df.head(10).to_dict('records'),
@@ -96,7 +107,7 @@ def get_file_info(request, file_id):
                     'null_counts': df.isnull().sum().to_dict(),
                 })
             except Exception as e:
-                response_data['error'] = f"Error reading CSV data: {str(e)}"
+                response_data['error'] = f"Error reading data: {str(e)}"
         
         return JsonResponse(response_data)
     except Exception as e:
@@ -108,13 +119,16 @@ def get_file_data(request, file_id):
     """Get paginated CSV data (CSV Only)"""
     try:
         doc = get_object_or_404(Document, id=file_id)
-        if doc.file_type != 'csv':
-            return JsonResponse({'error': 'Only CSV files supported for grid view'}, status=400)
+        if doc.file_type not in ['csv', 'xlsx']:
+            return JsonResponse({'error': 'Only CSV and Excel files supported for grid view'}, status=400)
 
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 100))
         
-        df = pd.read_csv(doc.file.path)
+        if doc.file_type == 'csv':
+            df = pd.read_csv(doc.file.path)
+        else:
+            df = pd.read_excel(doc.file.path)
         
         start = (page - 1) * page_size
         end = start + page_size
@@ -139,18 +153,26 @@ def edit_cell(request, file_id):
     """Edit a specific cell in the CSV (CSV Only)"""
     try:
         doc = get_object_or_404(Document, id=file_id)
-        if doc.file_type != 'csv':
-            return JsonResponse({'error': 'Only CSV files supported for editing'}, status=400)
+        if doc.file_type not in ['csv', 'xlsx']:
+            return JsonResponse({'error': 'Only CSV and Excel files supported for editing'}, status=400)
 
         data = json.loads(request.body)
-        df = pd.read_csv(doc.file.path)
+        
+        if doc.file_type == 'csv':
+            df = pd.read_csv(doc.file.path)
+        else:
+            df = pd.read_excel(doc.file.path)
         
         row_index = int(data.get('row_index'))
         column = data.get('column')
         value = data.get('value')
         
         df.at[row_index, column] = value
-        df.to_csv(doc.file.path, index=False)
+        
+        if doc.file_type == 'csv':
+            df.to_csv(doc.file.path, index=False)
+        else:
+            df.to_excel(doc.file.path, index=False)
         
         doc.row_count = len(df)
         doc.save()
@@ -729,5 +751,167 @@ def download_file(request, file_id):
         response = FileResponse(open(doc.file.path, 'rb'))
         response['Content-Disposition'] = f'attachment; filename="{doc.name}"'
         return response
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@require_http_methods(["GET"])
+def get_docx_content(request, file_id):
+    """Get DOCX content: HTML for preview and paragraphs for editing"""
+    try:
+        doc = get_object_or_404(Document, id=file_id)
+        if doc.file_type != 'docx':
+            return JsonResponse({'error': 'Not a DOCX file'}, status=400)
+            
+        from .utils import docx_to_html, get_docx_paragraphs
+        
+        html_content = docx_to_html(doc.file.path)
+        paragraphs = get_docx_paragraphs(doc.file.path)
+        
+        return JsonResponse({
+            'html': html_content,
+            'paragraphs': paragraphs
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_docx_text(request, file_id):
+    """Update a specific paragraph in DOCX"""
+    try:
+        doc = get_object_or_404(Document, id=file_id)
+        if doc.file_type != 'docx':
+            return JsonResponse({'error': 'Not a DOCX file'}, status=400)
+            
+        data = json.loads(request.body)
+        index = int(data.get('index'))
+        text = data.get('text')
+        
+        from .utils import update_docx_paragraph
+        
+        success = update_docx_paragraph(doc.file.path, index, text)
+        if success:
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'error': 'Failed to update paragraph'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def upload_docx_image(request, file_id):
+    """Upload and append image to DOCX"""
+    try:
+        doc = get_object_or_404(Document, id=file_id)
+        if doc.file_type != 'docx':
+            return JsonResponse({'error': 'Not a DOCX file'}, status=400)
+            
+        image = request.FILES.get('image')
+        if not image:
+            return JsonResponse({'error': 'No image provided'}, status=400)
+            
+        from .utils import add_image_to_docx
+        
+        add_image_to_docx(doc.file.path, image)
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def organize_docx_view(request, file_id):
+    """Reorder/Delete pages in DOCX"""
+    try:
+        doc = get_object_or_404(Document, id=file_id)
+        if doc.file_type != 'docx':
+            return JsonResponse({'error': 'Not a DOCX file'}, status=400)
+            
+        data = json.loads(request.body)
+        pages_config = data.get('pages') # List of {original_page_number: 1}
+        output_name = data.get('output_name', f'organized_{doc.name}')
+        
+        if not pages_config:
+            return JsonResponse({'error': 'Page configuration is required'}, status=400)
+
+        import tempfile
+        from .utils import organize_docx_pages
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_out:
+            tmp_output_path = tmp_out.name
+            
+        result_path = organize_docx_pages(doc.file.path, pages_config, tmp_output_path)
+        
+        if not result_path:
+             return JsonResponse({'error': 'Failed to organize document'}, status=500)
+        
+        # Read back and save
+        with open(tmp_output_path, 'rb') as f:
+            content = f.read()
+            
+        new_doc = Document(name=output_name, file_type='docx')
+        new_doc.file.save(output_name, ContentFile(content), save=True)
+        new_doc.size = new_doc.file.size
+        new_doc.save()
+        
+        if os.path.exists(tmp_output_path):
+            os.remove(tmp_output_path)
+
+        return JsonResponse({
+            'success': True,
+            'file': document_to_dict(new_doc)
+        })
+
+    except Exception as e:
+        import traceback
+        return JsonResponse({'error': str(e), 'traceback': traceback.format_exc()}, status=400)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def merge_docx_view(request):
+    """Merge multiple DOCX files"""
+    try:
+        data = json.loads(request.body)
+        file_ids = data.get('file_ids', [])
+        output_name = data.get('output_name', 'merged.docx')
+
+        if len(file_ids) < 2:
+            return JsonResponse({'error': 'At least two files are required for merging'}, status=400)
+
+        docs = Document.objects.filter(id__in=file_ids, file_type='docx')
+        # Maintain order
+        docs_map = {d.id: d for d in docs}
+        ordered_docs = [docs_map[fid] for fid in file_ids if fid in docs_map]
+        
+        if len(ordered_docs) < 2:
+            return JsonResponse({'error': 'Invalid files provided'}, status=400)
+            
+        file_paths = [d.file.path for d in ordered_docs]
+        
+        import tempfile
+        from .utils import merge_docx_files
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_out:
+            tmp_output_path = tmp_out.name
+            
+        merge_docx_files(file_paths, tmp_output_path)
+        
+        with open(tmp_output_path, 'rb') as f:
+            content = f.read()
+            
+        merged_doc = Document(name=output_name, file_type='docx')
+        merged_doc.file.save(output_name, ContentFile(content), save=True)
+        merged_doc.size = merged_doc.file.size
+        merged_doc.save()
+        
+        if os.path.exists(tmp_output_path):
+            os.remove(tmp_output_path)
+
+        return JsonResponse({
+            'success': True,
+            'file': document_to_dict(merged_doc)
+        })
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)

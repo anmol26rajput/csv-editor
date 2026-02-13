@@ -8,6 +8,8 @@ const STATES = {
     ACTION_SELECT: 'actionSelectState',
     EDITOR: 'editorState',
     PDF_STUDIO: 'pdfStudioState',
+    DOCX_EDITOR: 'docxEditorState',
+    DOCX_ORGANIZE: 'docxOrganizeState',
     RESULT: 'resultState'
 };
 
@@ -25,6 +27,8 @@ const TOOLS = {
         { id: 'edit', icon: '📝', title: 'Edit PDF', desc: 'Rotate, Delete, Reorder', action: "openPdfStudio()" }
     ],
     docx: [
+        { id: 'editor', icon: '📝', title: 'DOCX Editor', desc: 'Preview, Edit text & Add images', action: "openDocxEditor()" },
+        { id: 'organize', icon: '📄', title: 'Manage Pages', desc: 'Merge, Split, Reorder', action: "openDocxOrganize()" },
         { id: 'findReplace', icon: '🔎', title: 'Find & Replace', desc: 'Replace text content', action: "showTool('findReplaceSection')" }
     ],
     pptx: [
@@ -910,3 +914,296 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+// 8. DOCX Editor Functions
+function openDocxEditor() {
+    switchState(STATES.DOCX_EDITOR);
+    document.getElementById('docxFileName').innerText = currentFile.name;
+    renderDocxEditor();
+}
+
+function renderDocxEditor() {
+    const previewContainer = document.getElementById('docxPreview');
+    const editContainer = document.getElementById('docxEditContainer');
+    const btn = document.getElementById('docxEditToggleBtn');
+
+    // Reset view to preview mode
+    previewContainer.style.display = 'block';
+    editContainer.style.display = 'none';
+    btn.innerText = '📝 Edit Text';
+    btn.classList.replace('btn-primary', 'btn-secondary');
+
+    previewContainer.innerHTML = '<div class="text-center text-muted">Loading preview...</div>';
+
+    fetch(`/api/files/${currentFile.id}/docx-content/`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                previewContainer.innerHTML = `<div class="text-danger">Error: ${data.error}</div>`;
+                return;
+            }
+            // HTML for Preview
+            previewContainer.innerHTML = data.html || '<div class="text-muted">No content</div>';
+
+            // Form for Editing
+            editContainer.innerHTML = '';
+            if (data.paragraphs) {
+                data.paragraphs.forEach(p => {
+                    const group = document.createElement('div');
+                    group.className = 'mb-3 glass-card';
+                    group.style.padding = '1rem';
+                    group.innerHTML = `
+                         <label class="form-label text-muted" style="font-size: 0.8rem">Paragraph ${p.id + 1}</label>
+                         <textarea class="form-control" id="para_${p.id}" rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 0.5rem;">${p.text}</textarea>
+                         <div style="text-align: right;">
+                            <button class="btn btn-primary btn-sm" onclick="saveDocxParagraph(${p.id})">Save</button>
+                         </div>
+                    `;
+                    editContainer.appendChild(group);
+                });
+            }
+        })
+        .catch(err => {
+            previewContainer.innerHTML = `<div class="text-danger">Error loading document: ${err}</div>`;
+        });
+}
+
+function toggleDocxEditMode() {
+    const preview = document.getElementById('docxPreview');
+    const edit = document.getElementById('docxEditContainer');
+    const btn = document.getElementById('docxEditToggleBtn');
+
+    if (preview.style.display !== 'none') {
+        // Switch to Edit
+        preview.style.display = 'none';
+        edit.style.display = 'block';
+        btn.innerText = '👁 Preview';
+        btn.classList.replace('btn-secondary', 'btn-primary');
+    } else {
+        // Switch to Preview
+        preview.style.display = 'block';
+        edit.style.display = 'none';
+        btn.innerText = '📝 Edit Text';
+        btn.classList.replace('btn-primary', 'btn-secondary');
+        // Reload preview to see changes
+        renderDocxEditor();
+    }
+}
+
+function saveDocxParagraph(index) {
+    const text = document.getElementById(`para_${index}`).value;
+
+    fetch('/api/files/' + currentFile.id + '/update-docx-text/', {
+        method: 'POST',
+        body: JSON.stringify({ index: index, text: text })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const btn = document.querySelector(`button[onclick="saveDocxParagraph(${index})"]`);
+                const orig = btn.innerText;
+                btn.innerText = 'Saved!';
+                btn.style.backgroundColor = '#10b981';
+                setTimeout(() => {
+                    btn.innerText = orig;
+                    btn.style.backgroundColor = '';
+                }, 1000);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        });
+}
+
+function triggerDocxImageUpload() {
+    document.getElementById('docxImageInput').click();
+}
+
+document.getElementById('docxImageInput').addEventListener('change', function () {
+    if (this.files.length === 0) return;
+    uploadDocxImage(this.files[0]);
+});
+
+function uploadDocxImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    // Show loading
+    const oldText = document.querySelector('button[onclick="triggerDocxImageUpload()"]').innerText;
+    document.querySelector('button[onclick="triggerDocxImageUpload()"]').innerText = 'Uploading...';
+
+    fetch(`/api/files/${currentFile.id}/upload-docx-image/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Image added to the end of document!');
+                document.getElementById('docxImageInput').value = '';
+                renderDocxEditor(); // Reload
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .finally(() => {
+            document.querySelector('button[onclick="triggerDocxImageUpload()"]').innerText = oldText;
+        });
+}
+
+// 9. DOCX Organize Functions
+let docxPages = []; // [{index: 1, original: 1, deleted: false}]
+
+function openDocxOrganize() {
+    switchState(STATES.DOCX_ORGANIZE);
+    document.getElementById('docxOrgFileName').innerText = currentFile.name;
+    
+    const grid = document.getElementById('docxGrid');
+    grid.innerHTML = '<div class="text-center text-muted">Loading page structure...</div>';
+    
+    fetch(`/api/files/${currentFile.id}/docx-content/`)
+        .then(r => r.json())
+        .then(data => {
+             // Default to 1 page for now until better page detection
+             docxPages = Array.from({length: 1}, (_, i) => ({index: i+1, original: i+1, deleted: false}));
+             renderDocxGrid(); 
+        });
+}
+
+function renderDocxGrid() {
+    const grid = document.getElementById('docxGrid');
+    grid.innerHTML = '';
+    
+    docxPages.forEach((page, visualIndex) => {
+        if (page.deleted) return;
+        
+        const card = document.createElement('div');
+        card.className = 'pdf-page-card glass-card'; // Reuse PDF styles
+        card.onclick = (e) => toggleDocxPageSelection(e, visualIndex);
+        
+        // No preview image, just text
+        card.innerHTML = `
+            <div class="page-preview" style="display:flex; align-items:center; justify-content:center; background:#fff;">
+                <span style="font-size: 2rem; color: #ccc;">📄</span>
+                <div style="position:absolute; bottom:5px; right:5px; font-weight:bold;">${page.index}</div>
+            </div>
+            <div class="page-number">Orig: ${page.original}</div>
+        `;
+        
+        if (visualIndex === selectedDocxPageIdx) {
+            card.classList.add('selected');
+        }
+        
+        grid.appendChild(card);
+    });
+}
+
+let selectedDocxPageIdx = -1;
+
+function toggleDocxPageSelection(e, idx) {
+    const cards = document.querySelectorAll('#docxGrid .pdf-page-card');
+    cards.forEach(c => c.classList.remove('selected'));
+    
+    if (selectedDocxPageIdx === idx) {
+        selectedDocxPageIdx = -1; // Deselect
+    } else {
+        selectedDocxPageIdx = idx;
+        e.currentTarget.classList.add('selected');
+        document.getElementById('moveDocxPageInput').value = idx + 1;
+    }
+}
+
+function moveSelectedDocxPage() {
+    const targetInput = document.getElementById('moveDocxPageInput');
+    const targetPos = parseInt(targetInput.value);
+    
+    if (!targetPos || targetPos < 1 || targetPos > docxPages.length || selectedDocxPageIdx === -1) return;
+    
+    const newVisualIndex = targetPos - 1;
+    if (selectedDocxPageIdx === newVisualIndex) return;
+
+    // Move in array
+    const item = docxPages.splice(selectedDocxPageIdx, 1)[0];
+    docxPages.splice(newVisualIndex, 0, item);
+    
+    // Update indices
+    docxPages.forEach((p, i) => p.index = i + 1);
+    
+    renderDocxGrid();
+    selectedDocxPageIdx = -1; 
+    targetInput.value = '';
+}
+
+function deleteDocxPage() {
+    if (selectedDocxPageIdx === -1) return;
+    if (!confirm('Delete this page?')) return;
+    
+    docxPages[selectedDocxPageIdx].deleted = true;
+    renderDocxGrid();
+    selectedDocxPageIdx = -1;
+}
+
+function saveDocxChanges() {
+    // Construct config
+    const pagesConfig = docxPages
+        .filter(p => !p.deleted)
+        .map(p => ({ original_page_number: p.original }));
+        
+    fetch(`/api/files/${currentFile.id}/organize-docx/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            pages: pagesConfig,
+            output_name: `organized_${currentFile.name}`
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showResult(`Document organized! Created ${data.file.name}`, data.file.id);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function startDocxMerge() {
+    document.getElementById('mergeDocxInput').click();
+}
+
+document.getElementById('mergeDocxInput').addEventListener('change', function() {
+    if(this.files.length === 0) return;
+    const file = this.files[0];
+    const formData = new FormData();
+    formData.append('files', file);
+    
+    // Upload first
+    fetch('/api/upload/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.files && data.files.length > 0) {
+            const newFile = data.files[0];
+            // Call merge
+            return fetch('/api/merge-docx/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    file_ids: [currentFile.id, newFile.id],
+                    output_name: `merged_${currentFile.name}`
+                })
+            });
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showResult(`Merged successfully! Created ${data.file.name}`, data.file.id);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+});
