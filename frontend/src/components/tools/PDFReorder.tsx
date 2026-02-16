@@ -4,27 +4,44 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { GripVertical, Download, RotateCcw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { UploadedFile } from './FileUploader';
+import FileUploader, { UploadedFile } from './FileUploader';
 
 interface Page {
     index: number;
     originalIndex: number;
 }
 
-export default function PDFReorder({ file }: { file: UploadedFile }) {
+interface PDFReorderProps {
+    initialFile?: UploadedFile | null;
+}
+
+export default function PDFReorder({ initialFile }: PDFReorderProps) {
+    const [file, setFile] = useState<UploadedFile | null>(initialFile || null);
     const [pages, setPages] = useState<Page[]>([]);
     const [totalPages, setTotalPages] = useState(0);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [processing, setProcessing] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ id: string; url: string } | null>(null);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (file) {
+        if (initialFile) {
+            setFile(initialFile);
+        }
+    }, [initialFile]);
+
+    useEffect(() => {
+        if (file && file.id) {
             loadPDFInfo(file);
         }
     }, [file]);
+
+    const handleUpload = (uploadedFile: UploadedFile) => {
+        setFile(uploadedFile);
+        setResult(null);
+        setError('');
+    };
 
     const loadPDFInfo = async (uploadedFile: UploadedFile) => {
         try {
@@ -116,6 +133,19 @@ export default function PDFReorder({ file }: { file: UploadedFile }) {
         }
     };
 
+    // Show file uploader if no file
+    if (!file) {
+        return (
+            <div className="max-w-2xl mx-auto">
+                <FileUploader
+                    onUploadComplete={handleUpload}
+                    accept=".pdf"
+                    label="Upload PDF to Reorder Pages"
+                />
+            </div>
+        );
+    }
+
     if (loading) {
         return (
             <div className="flex flex-col justify-center items-center py-16 space-y-4">
@@ -143,10 +173,10 @@ export default function PDFReorder({ file }: { file: UploadedFile }) {
                 </Button>
                 <div className="mt-6">
                     <button
-                        onClick={() => setResult(null)}
+                        onClick={() => { setResult(null); setFile(null); }}
                         className="text-sm text-gray-600 hover:text-gray-900 font-medium hover:underline transition-colors"
                     >
-                        Reorder Again
+                        Reorder Another File
                     </button>
                 </div>
             </div>
@@ -160,15 +190,25 @@ export default function PDFReorder({ file }: { file: UploadedFile }) {
                     <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
                     <h3 className="text-lg font-bold text-gray-900">Reorder Pages</h3>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleReset}
-                    className="border-2 border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300 transition-all duration-300"
-                >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Reset Order
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleReset}
+                        className="border-2 border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300 transition-all duration-300"
+                    >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Reset Order
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFile(null)}
+                        className="border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all duration-300"
+                    >
+                        Change File
+                    </Button>
+                </div>
             </div>
 
             {error && (
