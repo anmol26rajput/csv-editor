@@ -86,3 +86,6 @@ local_settings.py
 
 # Uploaded files (development)
 /media/uploads/
+
+.env
+.env.local

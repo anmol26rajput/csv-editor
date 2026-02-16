@@ -41,3 +41,6 @@ next-env.d.ts
 *.swp
 *.swo
 *~
+
+.env
+.env.local
