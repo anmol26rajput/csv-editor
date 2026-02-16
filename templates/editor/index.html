@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Editor - Simple & Fast</title>
+    <title>OmniFile - Universal File Editor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
@@ -14,7 +14,6 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 </head>
 
 <body>
@@ -29,7 +28,7 @@
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                <h1>CSV Editor</h1>
+                <h1>OmniFile</h1>
             </div>
             <p class="subtitle">Upload, Edit, Download. Simple as that.</p>
         </header>
@@ -39,7 +38,7 @@
             <div id="uploadState" class="view-state">
                 <section class="upload-section">
                     <div class="upload-area glass-card" id="uploadArea">
-                        <input type="file" id="fileInput" accept=".csv, .pdf, .docx, .doc, .pptx, .ppt"
+                        <input type="file" id="fileInput" accept=".csv, .xlsx, .xls, .pdf, .docx, .doc, .pptx, .ppt"
                             style="display: none;">
                         <div class="upload-content">
                             <div class="upload-icon">
@@ -317,7 +316,96 @@
                 </div>
             </div>
 
-        </main>
+            <!-- STATE 5: DOCX EDITOR -->
+            <div id="docxEditorState" class="view-state" style="display: none;">
+                <section class="editor-section">
+                    <div class="editor-toolbar">
+                        <div class="file-info">
+                            <span class="file-icon">📄</span>
+                            <span id="docxFileName" class="text-muted"
+                                style="margin-left: 0.5rem; font-weight: 500;">document.docx</span>
+                        </div>
+                        <div class="editor-actions">
+                            <!-- Tools Group -->
+                            <div class="toolbar-group">
+                                <button class="btn btn-text btn-sm" id="docxEditToggleBtn"
+                                    onclick="toggleDocxEditMode()" title="Toggle Edit Mode">
+                                    📝 Edit Text
+                                </button>
+                                <div style="width: 1px; height: 24px; background: #e5e7eb; margin: 0 0.25rem;"></div>
+                                <button class="btn btn-text btn-sm" onclick="triggerDocxImageUpload()"
+                                    title="Insert Image at End">
+                                    🖼 Add Image
+                                </button>
+                                <input type="file" id="docxImageInput" accept="image/*" style="display: none">
+                            </div>
+
+                            <div class="divider"></div>
+
+                            <!-- Actions -->
+                            <button class="btn btn-text" onclick="showActionSelect()">Close</button>
+                            <button class="btn btn-primary" onclick="downloadCurrentFile()">
+                                <span style="margin-right: 6px;">⬇</span> Download
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="docx-content-area"
+                        style="padding: 2rem; overflow-y: auto; height: 100%; background: #f3f4f6;">
+                        <div id="docxPreview" class="paper-page"
+                            style="background: white; padding: 3rem; box-shadow: var(--shadow-sm); max-width: 800px; margin: 0 auto; min-height: 100%;">
+                            <!-- HTML Content -->
+                            <div class="text-center text-muted">Loading preview...</div>
+                        </div>
+
+                        <div id="docxEditContainer" style="display: none; max-width: 800px; margin: 0 auto;">
+                            <!-- Edit forms injected here -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+    </div>
+
+    <!-- STATE 6: DOCX ORGANIZE (Merge/Split/Reorder) -->
+    <div id="docxOrganizeState" class="view-state" style="display: none;">
+        <section class="pdf-studio-section"> <!-- Reusing PDF studio styles -->
+            <div class="editor-toolbar glass-card">
+                <div class="file-info">
+                    <span class="file-icon">📄</span>
+                    <span id="docxOrgFileName" class="file-name">document.docx</span>
+                </div>
+
+                <div class="editor-actions">
+                    <!-- Manual Reorder -->
+                    <div class="toolbar-group">
+                        <input type="number" id="moveDocxPageInput" class="toolbar-input" placeholder="#" min="1">
+                        <button class="btn btn-secondary btn-sm" onclick="moveSelectedDocxPage()">Move</button>
+                    </div>
+
+                    <button class="btn btn-secondary btn-sm" title="Rotate" onclick="rotateDocxPage()" disabled
+                        style="opacity: 0.5; cursor: not-allowed;">↻</button>
+                    <button class="btn btn-danger btn-sm" title="Delete" onclick="deleteDocxPage()">🗑</button>
+
+                    <div class="divider"></div>
+
+                    <button class="btn btn-secondary btn-sm" onclick="extractDocxPages()">Extract Selected</button>
+                    <button class="btn btn-secondary btn-sm" onclick="startDocxMerge()">➕ Merge DOCX</button>
+                    <input type="file" id="mergeDocxInput" accept=".docx" style="display: none;">
+
+                    <div class="divider"></div>
+
+                    <button class="btn btn-primary" onclick="saveDocxChanges()">Save Changes</button>
+                </div>
+            </div>
+
+            <div class="pdf-grid-container" id="docxGrid">
+                <!-- DOCX Pages will be rendered here as cards -->
+            </div>
+        </section>
+    </div>
+
+    </main>
     </div>
 
     <script src="/static/js/main.js"></script>

@@ -5,6 +5,7 @@ import os
 class Document(models.Model):
     FILE_TYPES = [
         ('csv', 'CSV'),
+        ('xlsx', 'Excel'),
         ('pdf', 'PDF'),
         ('docx', 'Word Document'),
         ('pptx', 'PowerPoint'),
@@ -17,7 +18,7 @@ class Document(models.Model):
     uploaded_at = models.DateTimeField(default=timezone.now)
     size = models.IntegerField(default=0)
     
-    # CSV specific fields (nullable now)
+    # CSV/Excel specific fields (nullable now)
     row_count = models.IntegerField(null=True, blank=True)
     column_count = models.IntegerField(null=True, blank=True)
     
@@ -32,6 +33,8 @@ class Document(models.Model):
         ext = os.path.splitext(self.file.name)[1].lower()
         if ext == '.csv':
             self.file_type = 'csv'
+        elif ext == '.xlsx':
+            self.file_type = 'xlsx'
         elif ext == '.pdf':
             self.file_type = 'pdf'
         elif ext in ['.docx', '.doc']:

@@ -1,6 +1,8 @@
 # 📊 The Friendly CSV Editor
+# OmniFile 🚀
+> **Upload. Edit. Download.** Simple as that.
 
-**Say goodbye to clunky spreadsheet software. Edit, Split, and Clean your CSVs in seconds.**
+**OmniFile** is a modern, privacy-focused, and ultra-fast web tool for editing **CSVs, PDFs, DOCX, and PPTX** files. No ads, no cloud storage, just you and your files.
 
 ---
 

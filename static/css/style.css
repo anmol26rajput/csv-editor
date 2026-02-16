@@ -568,6 +568,12 @@ label {
     background: white;
 }
 
+.editor-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
 .table-container {
     flex: 1;
     overflow: auto;

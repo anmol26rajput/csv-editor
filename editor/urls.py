@@ -16,5 +16,10 @@ urlpatterns = [
     path('api/files/<int:file_id>/ai-preprocess/', views.ai_preprocess, name='ai_preprocess'),
     path('api/files/<int:file_id>/find-replace/', views.find_replace, name='find_replace'),
     path('api/files/<int:file_id>/organize-pdf/', views.organize_pdf_view, name='organize_pdf'),
+    path('api/files/<int:file_id>/docx-content/', views.get_docx_content, name='get_docx_content'),
+    path('api/files/<int:file_id>/update-docx-text/', views.update_docx_text, name='update_docx_text'),
+    path('api/files/<int:file_id>/upload-docx-image/', views.upload_docx_image, name='upload_docx_image'),
+    path('api/files/<int:file_id>/organize-docx/', views.organize_docx_view, name='organize_docx'),
+    path('api/merge-docx/', views.merge_docx_view, name='merge_docx'),
 ]
 
