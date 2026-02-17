@@ -1,6 +1,19 @@
 import * as React from "react";
 import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+
+type ClassValue = string | undefined | null | false | Record<string, boolean>;
+
+function cn(...inputs: ClassValue[]): string {
+    return inputs
+        .flatMap((input) => {
+            if (!input) return [];
+            if (typeof input === "string") return [input];
+            return Object.entries(input)
+                .filter(([, value]) => Boolean(value))
+                .map(([key]) => key);
+        })
+        .join(" ");
+}
 
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,7 +25,7 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, variant = "default", size = "default", isLoading, children, ...props }, ref) => {
 
-        const variantStyles = {
+        const variantStyles: Record<string, string> = {
             default: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm",
             secondary: "bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 shadow-sm",
             outline: "border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50",
@@ -20,7 +33,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             destructive: "bg-red-600 text-white hover:bg-red-700",
         };
 
-        const sizeStyles = {
+        const sizeStyles: Record<string, string> = {
             default: "h-10 px-4 py-2",
             sm: "h-8 px-3 text-xs",
             lg: "h-12 px-8 text-lg",
@@ -45,6 +58,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         );
     }
 );
+
 Button.displayName = "Button";
 
 export { Button };
