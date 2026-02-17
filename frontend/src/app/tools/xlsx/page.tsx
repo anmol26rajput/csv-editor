@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -9,7 +9,7 @@ import XLSXSheet from '@/components/tools/XLSXSheet';
 import XLSXSheetReorder from '@/components/tools/XLSXSheetReorder';
 import { Loader2 } from 'lucide-react';
 
-export default function XLSXToolsPage() {
+function XLSXToolsContent() {
     const [file, setFile] = useState<UploadedFile | null>(null);
     const [mode, setMode] = useState<'view' | 'reorder'>('view');
     const [loading, setLoading] = useState(false);
@@ -70,8 +70,8 @@ export default function XLSXToolsPage() {
                             <button
                                 onClick={() => setMode('view')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${mode === 'view'
-                                        ? 'bg-green-600 text-white shadow-md'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-green-600 text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
                                 View Data
@@ -79,8 +79,8 @@ export default function XLSXToolsPage() {
                             <button
                                 onClick={() => setMode('reorder')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${mode === 'reorder'
-                                        ? 'bg-green-600 text-white shadow-md'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-green-600 text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                     }`}
                             >
                                 Reorder Sheets
@@ -102,5 +102,13 @@ export default function XLSXToolsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function XLSXToolsPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+            <XLSXToolsContent />
+        </Suspense>
     );
 }

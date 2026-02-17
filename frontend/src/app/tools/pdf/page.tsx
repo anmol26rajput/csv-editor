@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Merge, Scissors, ArrowUpDown } from 'lucide-react';
+import { Merge, Scissors, ArrowUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PDFMerge from '@/components/tools/PDFMerge';
 import PDFSplit from '@/components/tools/PDFSplit';
 import PDFReorder from '@/components/tools/PDFReorder';
 import { UploadedFile } from '@/components/tools/FileUploader';
 
-export default function PDFToolsPage() {
+function PDFToolsContent() {
     const [activeTab, setActiveTab] = useState<'merge' | 'split' | 'reorder'>('merge');
     const [initialFile, setInitialFile] = useState<UploadedFile | null>(null);
     const searchParams = useSearchParams();
@@ -78,5 +78,13 @@ export default function PDFToolsPage() {
                 {activeTab === 'reorder' && <PDFReorder initialFile={initialFile} />}
             </div>
         </div>
+    );
+}
+
+export default function PDFToolsPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+            <PDFToolsContent />
+        </Suspense>
     );
 }
