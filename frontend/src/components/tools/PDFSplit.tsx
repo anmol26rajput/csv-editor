@@ -13,11 +13,7 @@ interface PDFSplitProps {
 
 export default function PDFSplit({ initialFile }: PDFSplitProps) {
     const [file, setFile] = useState<UploadedFile | null>(initialFile || null);
-    const [totalPages, setTotalPages] = useState<number>(0);
 
-    // Split configuration
-    const [mode, setMode] = useState<'all' | 'at_page'>('all');
-    const [splitPage, setSplitPage] = useState<number | ''>(1);
 
     useEffect(() => {
         if (initialFile) {
