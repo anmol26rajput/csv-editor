@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Scissors, Download, FileText } from 'lucide-react';
+import { Scissors, Download, FileText, Layout, Split } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from './FileUploader';
@@ -13,6 +13,11 @@ interface PDFSplitProps {
 
 export default function PDFSplit({ initialFile }: PDFSplitProps) {
     const [file, setFile] = useState<UploadedFile | null>(initialFile || null);
+    const [totalPages, setTotalPages] = useState<number>(0);
+
+    // Split configuration
+    const [mode, setMode] = useState<'all' | 'at_page'>('all');
+    const [splitPage, setSplitPage] = useState<number>(1);
 
     useEffect(() => {
         if (initialFile) {
@@ -20,21 +25,46 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
         }
     }, [initialFile]);
 
+    // Fetch page count when file changes
+    useEffect(() => {
+        if (file) {
+            api.get(`/api/v1/tools/pdf/${file.id}/pages/`)
+                .then(res => {
+                    setTotalPages(res.data.total_pages);
+                    // Reset split page to middle or something reasonable, or just 1
+                    if (res.data.total_pages > 1) {
+                        setSplitPage(Math.floor(res.data.total_pages / 2));
+                    }
+                })
+                .catch(err => console.error("Failed to fetch page info", err));
+        } else {
+            setTotalPages(0);
+        }
+    }, [file]);
+
     const [processing, setProcessing] = useState(false);
     const [results, setResults] = useState<UploadedFile[]>([]);
 
     const handleUpload = (uploadedFile: UploadedFile) => {
         setFile(uploadedFile);
         setResults([]);
+        setMode('all');
     };
 
     const handleSplit = async () => {
         if (!file) return;
         setProcessing(true);
         try {
-            const response = await api.post('/api/v1/tools/pdf/split/', {
-                file_id: file.id
-            });
+            const payload: any = {
+                file_id: file.id,
+                mode: mode
+            };
+
+            if (mode === 'at_page') {
+                payload.page_number = splitPage;
+            }
+
+            const response = await api.post('/api/v1/tools/pdf/split/', payload);
             setResults(response.data);
         } catch (error) {
             console.error("Split error", error);
@@ -54,26 +84,85 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                     {!file ? (
                         <FileUploader onUploadComplete={handleUpload} accept=".pdf" label="Upload PDF to Split" />
                     ) : (
-                        <div className="p-4 border border-indigo-100 bg-indigo-50 rounded-lg">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="bg-white p-2 rounded-lg shadow-sm">
-                                    <FileText className="h-6 w-6 text-indigo-600" />
+                        <div className="space-y-6">
+                            <div className="p-4 border border-indigo-100 bg-indigo-50 rounded-lg">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                        <FileText className="h-6 w-6 text-indigo-600" />
+                                    </div>
+                                    <div className="overflow-hidden">
+                                        <p className="font-medium text-gray-900 truncate">{file.filename}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {(file.size_bytes / 1024).toFixed(1)} KB
+                                            {totalPages > 0 && ` • ${totalPages} pages`}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="overflow-hidden">
-                                    <p className="font-medium text-gray-900 truncate">{file.filename}</p>
-                                    <p className="text-xs text-gray-500">{(file.size_bytes / 1024).toFixed(1)} KB</p>
-                                </div>
+                                <Button variant="outline" size="sm" onClick={() => { setFile(null); setResults([]); }} className="w-full mt-2">
+                                    Change File
+                                </Button>
                             </div>
-                            <div className="flex gap-2">
+
+                            <div className="space-y-4">
+                                <label className="text-base font-semibold block">Split Method</label>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {/* Handle 'all' mode */}
+                                    <div
+                                        className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'all' ? 'border-primary bg-accent/10 border-indigo-600 bg-indigo-50' : 'border-muted bg-popover hover:bg-gray-50'}`}
+                                        onClick={() => setMode('all')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Layout className={`h-4 w-4 ${mode === 'all' ? 'text-indigo-600' : 'text-gray-500'}`} />
+                                            <div className="font-medium">Split All Pages</div>
+                                        </div>
+                                        <div className={`w-4 h-4 rounded-full border ${mode === 'all' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                                            {mode === 'all' && <div className="w-2 h-2 bg-white rounded-full m-auto mt-0.5" />}
+                                        </div>
+                                    </div>
+
+                                    {/* Handle 'at_page' mode */}
+                                    <div
+                                        className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'at_page' ? 'border-primary bg-accent/10 border-indigo-600 bg-indigo-50' : 'border-muted bg-popover hover:bg-gray-50'}`}
+                                        onClick={() => setMode('at_page')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Split className={`h-4 w-4 ${mode === 'at_page' ? 'text-indigo-600' : 'text-gray-500'}`} />
+                                            <div className="font-medium">Split at Page</div>
+                                        </div>
+                                        <div className={`w-4 h-4 rounded-full border ${mode === 'at_page' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                                            {mode === 'at_page' && <div className="w-2 h-2 bg-white rounded-full m-auto mt-0.5" />}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {mode === 'at_page' && (
+                                    <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2">
+                                        <label htmlFor="page-num" className="block text-sm font-medium text-gray-700">Split after page:</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                id="page-num"
+                                                type="number"
+                                                min={1}
+                                                max={totalPages > 1 ? totalPages - 1 : 1}
+                                                value={splitPage}
+                                                onChange={(e) => setSplitPage(parseInt(e.target.value) || 1)}
+                                                className="flex h-10 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                            />
+                                            <span className="text-sm text-gray-500">
+                                                (Creates: Pages 1-{splitPage} & Pages {splitPage + 1}-{totalPages})
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <Button
-                                    className="flex-1"
+                                    className="w-full mt-4"
                                     onClick={handleSplit}
                                     isLoading={processing}
+                                    disabled={mode === 'at_page' && (splitPage < 1 || (totalPages > 0 && splitPage >= totalPages))}
                                 >
-                                    <Scissors className="mr-2 h-4 w-4" /> Split All Pages
-                                </Button>
-                                <Button variant="outline" onClick={() => { setFile(null); setResults([]); }}>
-                                    Change
+                                    <Scissors className="mr-2 h-4 w-4" />
+                                    {mode === 'all' ? 'Split All Pages' : 'Split Document'}
                                 </Button>
                             </div>
                         </div>
@@ -84,8 +173,8 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
             <Card className="h-full flex flex-col">
                 <CardHeader>
                     <CardTitle className="text-lg flex justify-between items-center">
-                        <span>Extracted Pages</span>
-                        {results.length > 0 && <span className="text-sm font-normal text-green-600">{results.length} pages created</span>}
+                        <span>Result</span>
+                        {results.length > 0 && <span className="text-sm font-normal text-green-600">{results.length} files created</span>}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1">
@@ -94,10 +183,12 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                             {processing ? "Splitting document..." : "Resulting pages will appear here"}
                         </div>
                     ) : (
-                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
                             {results.map((resFile, idx) => (
                                 <div key={resFile.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:shadow-md transition-shadow">
-                                    <span className="text-sm font-medium text-gray-700">Page {idx + 1}</span>
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {mode === 'all' ? ("Page " + (idx + 1)) : ("Part " + (idx + 1))}
+                                    </span>
                                     <Button size="sm" variant="ghost" className="h-8" onClick={() => window.open(resFile.file, '_blank')}>
                                         <Download className="h-4 w-4 mr-1" /> Save
                                     </Button>

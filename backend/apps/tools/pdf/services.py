@@ -11,19 +11,45 @@ class PDFService(BaseFileService):
         merger.close()
         return output_path
 
-    def split_pdf(self, file_path, output_dir):
+    def split_pdf(self, file_path, output_dir, mode='all', page_number=None):
         reader = PdfReader(file_path)
         output_files = []
         base_name = os.path.splitext(os.path.basename(file_path))[0]
         
-        for i, page in enumerate(reader.pages):
-            writer = PdfWriter()
-            writer.add_page(page)
-            output_filename = f"{base_name}_page_{i+1}.pdf"
-            output_path = os.path.join(output_dir, output_filename)
-            with open(output_path, "wb") as output_stream:
-                writer.write(output_stream)
-            output_files.append(output_path)
+        if mode == 'all':
+            for i, page in enumerate(reader.pages):
+                writer = PdfWriter()
+                writer.add_page(page)
+                output_filename = f"{base_name}_page_{i+1}.pdf"
+                output_path = os.path.join(output_dir, output_filename)
+                with open(output_path, "wb") as output_stream:
+                    writer.write(output_stream)
+                output_files.append(output_path)
+        
+        elif mode == 'at_page':
+            if not page_number or page_number < 1 or page_number > len(reader.pages):
+                raise ValueError(f"Invalid page number: {page_number}")
+            
+            # part 1: pages 0 to page_number-2
+            # part 2: pages page_number-1 to end
+            
+            parts = [
+                (range(0, page_number - 1), f"{base_name}_part1.pdf"),
+                (range(page_number - 1, len(reader.pages)), f"{base_name}_part2.pdf")
+            ]
+            
+            for page_range, filename in parts:
+                if not page_range: continue # Skip empty parts if any (e.g. split at page 1)
+                
+                writer = PdfWriter()
+                for i in page_range:
+                    writer.add_page(reader.pages[i])
+                
+                output_path = os.path.join(output_dir, filename)
+                with open(output_path, "wb") as output_stream:
+                    writer.write(output_stream)
+                output_files.append(output_path)
+
         return output_files
 
     def reorder_pdf(self, file_path, page_order, output_path):
