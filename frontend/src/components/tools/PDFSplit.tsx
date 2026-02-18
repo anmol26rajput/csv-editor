@@ -271,7 +271,11 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                         {mode === 'all' ? `Page ${idx + 1}` : (mode === 'extract' || mode === 'at_page') ? resFile.filename : `Part ${idx + 1}`}
                                     </span>
                                     <Button size="sm" variant="ghost" className="h-8" onClick={() => {
-                                        const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${api.defaults.baseURL}${resFile.file}`;
+                                        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://csv-editorbackend.onrender.com';
+                                        // Ensure backend URL doesn't have trailing slash if file path starts with /
+                                        const baseUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+
+                                        const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${baseUrl}${resFile.file}`;
                                         const viewerUrl = `/tools/pdf/view?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(resFile.filename)}`;
                                         window.location.href = viewerUrl;
                                     }}>

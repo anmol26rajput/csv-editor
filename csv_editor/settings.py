@@ -43,6 +43,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+X_FRAME_OPTIONS = 'ALLOWALL'
+
 ROOT_URLCONF = 'csv_editor.urls'
 
 TEMPLATES = [
