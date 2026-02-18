@@ -23,7 +23,8 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
 
     const [totalPages, setTotalPages] = useState(0);
     const [splitPage, setSplitPage] = useState<string>("1");
-    const [mode, setMode] = useState<'all' | 'at_page'>('all');
+    const [mode, setMode] = useState<'all' | 'at_page' | 'extract'>('all');
+    const [selectedPages, setSelectedPages] = useState<number[]>([]);
 
     // Fetch page count when file changes
     useEffect(() => {
@@ -50,6 +51,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
         setFile(uploadedFile);
         setResults([]);
         setMode('all');
+        setSelectedPages([]);
     };
 
     const handleSplit = async () => {
@@ -143,6 +145,20 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                             {mode === 'at_page' && <div className="w-2 h-2 bg-white rounded-full m-auto mt-0.5" />}
                                         </div>
                                     </div>
+
+                                    {/* Handle 'extract' mode */}
+                                    <div
+                                        className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'extract' ? 'border-primary bg-accent/10 border-indigo-600 bg-indigo-50' : 'border-muted bg-popover hover:bg-gray-50'}`}
+                                        onClick={() => setMode('extract')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <FileText className={`h-4 w-4 ${mode === 'extract' ? 'text-indigo-600' : 'text-gray-500'}`} />
+                                            <div className="font-medium">Extract Pages</div>
+                                        </div>
+                                        <div className={`w-4 h-4 rounded-full border ${mode === 'extract' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                                            {mode === 'extract' && <div className="w-2 h-2 bg-white rounded-full m-auto mt-0.5" />}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {mode === 'at_page' && (
@@ -175,14 +191,52 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                     </div>
                                 )}
 
+                                {mode === 'extract' && (
+                                    <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Select pages to extract ({selectedPages.length} selected):</label>
+                                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-[300px] overflow-y-auto p-2 border rounded-md bg-gray-50">
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                                                const isSelected = selectedPages.includes(pageNum);
+                                                return (
+                                                    <button
+                                                        key={pageNum}
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                setSelectedPages(prev => prev.filter(p => p !== pageNum));
+                                                            } else {
+                                                                setSelectedPages(prev => [...prev, pageNum].sort((a, b) => a - b));
+                                                            }
+                                                        }}
+                                                        className={`
+                                                            flex items-center justify-center h-10 w-10 rounded-md text-sm font-medium transition-all
+                                                            ${isSelected
+                                                                ? 'bg-indigo-600 text-white shadow-md scale-105'
+                                                                : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'}
+                                                        `}
+                                                    >
+                                                        {pageNum}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="flex justify-end gap-2 text-xs">
+                                            <button onClick={() => setSelectedPages(Array.from({ length: totalPages }, (_, i) => i + 1))} className="text-indigo-600 hover:underline">Select All</button>
+                                            <button onClick={() => setSelectedPages([])} className="text-gray-500 hover:underline">Clear</button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <Button
                                     className="w-full mt-4"
                                     onClick={handleSplit}
                                     isLoading={processing}
-                                    disabled={mode === 'at_page' && (!splitPage || isNaN(parseInt(splitPage)) || parseInt(splitPage) < 1 || (totalPages > 0 && parseInt(splitPage) >= totalPages))}
+                                    disabled={
+                                        (mode === 'at_page' && (!splitPage || isNaN(parseInt(splitPage)) || parseInt(splitPage) < 1 || (totalPages > 0 && parseInt(splitPage) >= totalPages))) ||
+                                        (mode === 'extract' && selectedPages.length === 0)
+                                    }
                                 >
                                     <Scissors className="mr-2 h-4 w-4" />
-                                    {mode === 'all' ? 'Split All Pages' : 'Split Document'}
+                                    {mode === 'all' ? 'Split All Pages' : mode === 'extract' ? 'Extract Selected Pages' : 'Split Document'}
                                 </Button>
                             </div>
                         </div>
@@ -222,6 +276,6 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                     )}
                 </CardContent>
             </Card>
-        </div>
+        </div >
     );
 }

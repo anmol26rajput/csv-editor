@@ -73,9 +73,30 @@ class PDFSplitView(APIView):
             try:
                 mode = serializer.validated_data.get('mode', 'all')
                 page_number = serializer.validated_data.get('page_number')
-                output_files = service.split_pdf(doc.file.path, temp_dir, mode=mode, page_number=page_number)
+                selected_pages = serializer.validated_data.get('selected_pages')
+
+                if mode == 'extract':
+                    output_files = service.extract_pages(doc.file.path, temp_dir, selected_pages=selected_pages)
+                else:
+                    output_files = service.split_pdf(doc.file.path, temp_dir, mode=mode, page_number=page_number)
                 
-                # Zip the result if multiple pages
+                # If extract mode, we return the single PDF directly
+                if mode == 'extract' and len(output_files) == 1:
+                    result_path = output_files[0]
+                    result_filename = os.path.basename(result_path)
+                    
+                    new_doc = Document.objects.create(
+                        filename=result_filename,
+                        file_type='pdf',
+                        processing_status='completed'
+                    )
+                    with open(result_path, 'rb') as f:
+                        new_doc.file.save(result_filename, File(f))
+                    
+                    shutil.rmtree(temp_dir)
+                    return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
+
+                # Zip the result if multiple pages or other modes
                 zip_filename = f"{os.path.splitext(doc.filename)[0]}_split.zip"
                 zip_path = os.path.join(settings.MEDIA_ROOT, 'temp', zip_filename)
                 

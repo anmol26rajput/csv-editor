@@ -50,7 +50,35 @@ class PDFService(BaseFileService):
                     writer.write(output_stream)
                 output_files.append(output_path)
 
+        elif mode == 'extract':
+            # Extract specific pages into a single PDF
+            # page_number argument here is reused as selected_pages list (hacky but consistent with view calling convention)
+            # actually better to pass it explicitly. Let's assume view passes selected_pages as page_number or a new arg.
+            # I will update the method signature in a moment. For now, let's assume `page_number` carries the list if safe, otherwise `selected_pages` arg.
+            pass
+
         return output_files
+
+    def extract_pages(self, file_path, output_dir, selected_pages):
+        """
+        Extract specific pages into a single new PDF.
+        selected_pages: List of 1-based page numbers.
+        """
+        reader = PdfReader(file_path)
+        writer = PdfWriter()
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        
+        for page_num in selected_pages:
+            if 1 <= page_num <= len(reader.pages):
+                writer.add_page(reader.pages[page_num - 1])
+        
+        output_filename = f"{base_name}_extracted.pdf"
+        output_path = os.path.join(output_dir, output_filename)
+        
+        with open(output_path, "wb") as output_stream:
+            writer.write(output_stream)
+            
+        return [output_path]
 
     def reorder_pdf(self, file_path, page_order, output_path):
         """
