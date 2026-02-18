@@ -64,17 +64,24 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
             };
 
             if (mode === 'at_page') {
-                payload.page_number = parseInt(splitPage);
+                // Map 'at_page' (Single Page) mode to 'extract' mode with one page
+                payload.mode = 'extract';
+                payload.selected_pages = [parseInt(splitPage)];
+            } else if (mode === 'extract') {
+                payload.selected_pages = selectedPages;
             }
 
             const response = await api.post('/api/v1/tools/pdf/split/', payload);
             // Backend returns {id, url} — wrap it in an array for the results display
             const data = response.data;
+            // Determine file extension and type based on actual mode sent
+            const isExtract = mode === 'extract' || mode === 'at_page';
+
             const resultFile: UploadedFile = {
                 id: data.id,
-                filename: file.filename.replace('.pdf', '_split.zip'),
+                filename: isExtract ? file.filename.replace('.pdf', '_extracted.pdf') : file.filename.replace('.pdf', '_split.zip'),
                 file: data.url,
-                file_type: 'zip',
+                file_type: isExtract ? 'pdf' : 'zip',
                 size_bytes: 0,
             };
             setResults([resultFile]);
@@ -139,7 +146,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                     >
                                         <div className="flex items-center gap-2">
                                             <Split className={`h-4 w-4 ${mode === 'at_page' ? 'text-indigo-600' : 'text-gray-500'}`} />
-                                            <div className="font-medium">Split at Page</div>
+                                            <div className="font-medium">Extract Single Page</div>
                                         </div>
                                         <div className={`w-4 h-4 rounded-full border ${mode === 'at_page' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
                                             {mode === 'at_page' && <div className="w-2 h-2 bg-white rounded-full m-auto mt-0.5" />}
@@ -163,7 +170,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
 
                                 {mode === 'at_page' && (
                                     <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2">
-                                        <label htmlFor="page-num" className="block text-sm font-medium text-gray-700">Split after page:</label>
+                                        <label htmlFor="page-num" className="block text-sm font-medium text-gray-700">Page number to extract:</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 id="page-num"
@@ -185,7 +192,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                                 className="flex h-10 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
                                             <span className="text-sm text-gray-500">
-                                                (Creates: Pages 1-{splitPage || '?'} & Pages {(parseInt(splitPage) || 0) + 1}-{totalPages})
+                                                (Extracts only page {splitPage})
                                             </span>
                                         </div>
                                     </div>
@@ -236,7 +243,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                     }
                                 >
                                     <Scissors className="mr-2 h-4 w-4" />
-                                    {mode === 'all' ? 'Split All Pages' : mode === 'extract' ? 'Extract Selected Pages' : 'Split Document'}
+                                    {mode === 'all' ? 'Split All Pages' : mode === 'extract' ? 'Extract Selected Pages' : 'Extract Page'}
                                 </Button>
                             </div>
                         </div>
@@ -261,7 +268,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                             {results.map((resFile, idx) => (
                                 <div key={resFile.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:shadow-md transition-shadow">
                                     <span className="text-sm font-medium text-gray-700">
-                                        {mode === 'all' ? ("Page " + (idx + 1)) : ("Part " + (idx + 1))}
+                                        {mode === 'all' ? `Page ${idx + 1}` : (mode === 'extract' || mode === 'at_page') ? resFile.filename : `Part ${idx + 1}`}
                                     </span>
                                     <Button size="sm" variant="ghost" className="h-8" onClick={() => {
                                         const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${api.defaults.baseURL}${resFile.file}`;
