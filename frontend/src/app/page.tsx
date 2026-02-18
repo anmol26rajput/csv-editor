@@ -66,9 +66,10 @@ export default function Home() {
 
             router.push(`${targetPath}?id=${response.data.id}`);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload failed:', error);
-            alert('Upload failed. Check console.');
+            const msg = error.response?.data?.details || error.response?.data?.error || "Upload failed. Check console.";
+            alert(`Upload Error: ${msg}`);
             setUploading(false); // Only stop uploading state on error, keep it true on success while redirecting
         }
         // distinct from finally block because we want to keep loading state during redirect
