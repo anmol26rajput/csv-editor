@@ -209,8 +209,12 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                     <span className="text-sm font-medium text-gray-700">
                                         {mode === 'all' ? ("Page " + (idx + 1)) : ("Part " + (idx + 1))}
                                     </span>
-                                    <Button size="sm" variant="ghost" className="h-8" onClick={() => window.open(resFile.file, '_blank')}>
-                                        <Download className="h-4 w-4 mr-1" /> Save
+                                    <Button size="sm" variant="ghost" className="h-8" onClick={() => {
+                                        const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${api.defaults.baseURL}${resFile.file}`;
+                                        const viewerUrl = `/tools/pdf/view?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(resFile.filename)}`;
+                                        window.location.href = viewerUrl;
+                                    }}>
+                                        <Download className="h-4 w-4 mr-1" /> View & Download
                                     </Button>
                                 </div>
                             ))}
