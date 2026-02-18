@@ -66,7 +66,16 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
             }
 
             const response = await api.post('/api/v1/tools/pdf/split/', payload);
-            setResults(response.data);
+            // Backend returns {id, url} — wrap it in an array for the results display
+            const data = response.data;
+            const resultFile: UploadedFile = {
+                id: data.id,
+                filename: file.filename.replace('.pdf', '_split.zip'),
+                file: data.url,
+                file_type: 'zip',
+                size_bytes: 0,
+            };
+            setResults([resultFile]);
         } catch (error) {
             console.error("Split error", error);
             alert("Split failed");
