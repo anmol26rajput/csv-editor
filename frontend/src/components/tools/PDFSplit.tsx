@@ -17,7 +17,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
 
     // Split configuration
     const [mode, setMode] = useState<'all' | 'at_page'>('all');
-    const [splitPage, setSplitPage] = useState<number>(1);
+    const [splitPage, setSplitPage] = useState<number | ''>(1);
 
     useEffect(() => {
         if (initialFile) {
@@ -145,11 +145,28 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                                 min={1}
                                                 max={totalPages > 1 ? totalPages - 1 : 1}
                                                 value={splitPage}
-                                                onChange={(e) => setSplitPage(parseInt(e.target.value) || 1)}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === '') {
+                                                        setSplitPage('');
+                                                        return;
+                                                    }
+                                                    const num = parseInt(val);
+                                                    if (!isNaN(num)) {
+                                                        setSplitPage(num);
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    if (splitPage === '' || splitPage < 1) {
+                                                        setSplitPage(1);
+                                                    } else if (totalPages > 0 && splitPage >= totalPages) {
+                                                        setSplitPage(totalPages - 1);
+                                                    }
+                                                }}
                                                 className="flex h-10 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
                                             <span className="text-sm text-gray-500">
-                                                (Creates: Pages 1-{splitPage} & Pages {splitPage + 1}-{totalPages})
+                                                (Creates: Pages 1-{splitPage || '?'} & Pages {(typeof splitPage === 'number' ? splitPage + 1 : '?')}-{totalPages})
                                             </span>
                                         </div>
                                     </div>
@@ -159,7 +176,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                     className="w-full mt-4"
                                     onClick={handleSplit}
                                     isLoading={processing}
-                                    disabled={mode === 'at_page' && (splitPage < 1 || (totalPages > 0 && splitPage >= totalPages))}
+                                    disabled={mode === 'at_page' && (splitPage === '' || splitPage < 1 || (totalPages > 0 && splitPage >= totalPages))}
                                 >
                                     <Scissors className="mr-2 h-4 w-4" />
                                     {mode === 'all' ? 'Split All Pages' : 'Split Document'}
