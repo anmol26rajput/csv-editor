@@ -71,7 +71,9 @@ class PDFSplitView(APIView):
             os.makedirs(temp_dir, exist_ok=True)
             
             try:
-                output_files = service.split_pdf(doc.file.path, temp_dir)
+                mode = serializer.validated_data.get('mode', 'all')
+                page_number = serializer.validated_data.get('page_number')
+                output_files = service.split_pdf(doc.file.path, temp_dir, mode=mode, page_number=page_number)
                 
                 # Zip the result if multiple pages
                 zip_filename = f"{os.path.splitext(doc.filename)[0]}_split.zip"

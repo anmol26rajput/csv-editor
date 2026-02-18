@@ -8,6 +8,13 @@ class PDFMergeSerializer(serializers.Serializer):
 
 class PDFSplitSerializer(serializers.Serializer):
     file_id = serializers.UUIDField()
+    mode = serializers.ChoiceField(choices=['all', 'at_page'], default='all')
+    page_number = serializers.IntegerField(required=False, min_value=1)
+
+    def validate(self, data):
+        if data.get('mode') == 'at_page' and not data.get('page_number'):
+            raise serializers.ValidationError({"page_number": "Page number is required when mode is 'at_page'"})
+        return data
 
 class PDFReorderSerializer(serializers.Serializer):
     file_id = serializers.UUIDField()

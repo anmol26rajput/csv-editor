@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -8,7 +8,7 @@ import FileUploader, { UploadedFile } from '@/components/tools/FileUploader';
 import CSVGrid from '@/components/tools/CSVGrid';
 import { Loader2 } from 'lucide-react';
 
-export default function CSVToolsPage() {
+function CSVToolsContent() {
     const [file, setFile] = useState<UploadedFile | null>(null);
     const [loading, setLoading] = useState(false);
     const searchParams = useSearchParams();
@@ -28,7 +28,7 @@ export default function CSVToolsPage() {
                     setLoading(false);
                 });
         }
-    }, [fileId]); // file dependency removed to prevent loops if file object changes reference
+    }, [fileId]);
 
     return (
         <div className="space-y-8 max-w-6xl mx-auto">
@@ -75,5 +75,13 @@ export default function CSVToolsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function CSVToolsPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+            <CSVToolsContent />
+        </Suspense>
     );
 }

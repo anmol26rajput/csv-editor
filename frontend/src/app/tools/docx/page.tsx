@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@radix-ui/react-tabs';
 import { cn } from '@/lib/utils';
 import { Eye, Edit3, Loader2 } from 'lucide-react';
 
-export default function DocxToolsPage() {
+function DocxToolsContent() {
     const [file, setFile] = useState<UploadedFile | null>(null);
     const [mode, setMode] = useState<'preview' | 'edit'>('preview');
     const [loading, setLoading] = useState(false);
@@ -134,5 +134,13 @@ export default function DocxToolsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function DocxToolsPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+            <DocxToolsContent />
+        </Suspense>
     );
 }
