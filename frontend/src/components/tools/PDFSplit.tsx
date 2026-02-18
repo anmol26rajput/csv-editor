@@ -25,15 +25,20 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
         }
     }, [initialFile]);
 
+    const [totalPages, setTotalPages] = useState(0);
+    const [splitPage, setSplitPage] = useState<string>("1");
+    const [mode, setMode] = useState<'all' | 'at_page'>('all');
+
     // Fetch page count when file changes
     useEffect(() => {
         if (file) {
-            api.get(`/api/v1/tools/pdf/${file.id}/pages/`)
+            // Correct API URL: backend expects pages/<file_id>
+            api.get(`/api/v1/tools/pdf/pages/${file.id}/`)
                 .then(res => {
                     setTotalPages(res.data.total_pages);
                     // Reset split page to middle or something reasonable, or just 1
                     if (res.data.total_pages > 1) {
-                        setSplitPage(Math.floor(res.data.total_pages / 2));
+                        setSplitPage(String(Math.floor(res.data.total_pages / 2)));
                     }
                 })
                 .catch(err => console.error("Failed to fetch page info", err));
@@ -61,7 +66,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
             };
 
             if (mode === 'at_page') {
-                payload.page_number = splitPage;
+                payload.page_number = parseInt(splitPage);
             }
 
             const response = await api.post('/api/v1/tools/pdf/split/', payload);
@@ -145,28 +150,21 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                                 min={1}
                                                 max={totalPages > 1 ? totalPages - 1 : 1}
                                                 value={splitPage}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val === '') {
-                                                        setSplitPage('');
-                                                        return;
-                                                    }
-                                                    const num = parseInt(val);
-                                                    if (!isNaN(num)) {
-                                                        setSplitPage(num);
-                                                    }
-                                                }}
+                                                onChange={(e) => setSplitPage(e.target.value)}
                                                 onBlur={() => {
-                                                    if (splitPage === '' || splitPage < 1) {
-                                                        setSplitPage(1);
-                                                    } else if (totalPages > 0 && splitPage >= totalPages) {
-                                                        setSplitPage(totalPages - 1);
+                                                    const num = parseInt(splitPage);
+                                                    if (!splitPage || isNaN(num) || num < 1) {
+                                                        setSplitPage("1");
+                                                    } else if (totalPages > 0 && num >= totalPages) {
+                                                        setSplitPage(String(totalPages - 1));
+                                                    } else {
+                                                        setSplitPage(String(num));
                                                     }
                                                 }}
                                                 className="flex h-10 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
                                             <span className="text-sm text-gray-500">
-                                                (Creates: Pages 1-{splitPage || '?'} & Pages {(typeof splitPage === 'number' ? splitPage + 1 : '?')}-{totalPages})
+                                                (Creates: Pages 1-{splitPage || '?'} & Pages {(parseInt(splitPage) || 0) + 1}-{totalPages})
                                             </span>
                                         </div>
                                     </div>
@@ -176,7 +174,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                     className="w-full mt-4"
                                     onClick={handleSplit}
                                     isLoading={processing}
-                                    disabled={mode === 'at_page' && (splitPage === '' || splitPage < 1 || (totalPages > 0 && splitPage >= totalPages))}
+                                    disabled={mode === 'at_page' && (!splitPage || isNaN(parseInt(splitPage)) || parseInt(splitPage) < 1 || (totalPages > 0 && parseInt(splitPage) >= totalPages))}
                                 >
                                     <Scissors className="mr-2 h-4 w-4" />
                                     {mode === 'all' ? 'Split All Pages' : 'Split Document'}
