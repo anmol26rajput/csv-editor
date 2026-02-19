@@ -72,16 +72,14 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
             }
 
             const response = await api.post('/api/v1/tools/pdf/split/', payload);
-            // Backend returns {id, url} — wrap it in an array for the results display
+            // Backend always returns a single PDF now
             const data = response.data;
-            // Determine file extension and type based on actual mode sent
-            const isExtract = mode === 'extract' || mode === 'at_page';
 
             const resultFile: UploadedFile = {
                 id: data.id,
-                filename: isExtract ? file.filename.replace('.pdf', '_extracted.pdf') : file.filename.replace('.pdf', '_split.zip'),
+                filename: file.filename.replace('.pdf', '_extracted.pdf'),
                 file: data.url,
-                file_type: isExtract ? 'pdf' : 'zip',
+                file_type: 'pdf',
                 size_bytes: 0,
             };
             setResults([resultFile]);
@@ -268,7 +266,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                             {results.map((resFile, idx) => (
                                 <div key={resFile.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:shadow-md transition-shadow">
                                     <span className="text-sm font-medium text-gray-700">
-                                        {mode === 'all' ? `Page ${idx + 1}` : (mode === 'extract' || mode === 'at_page') ? resFile.filename : `Part ${idx + 1}`}
+                                        {resFile.filename}
                                     </span>
                                     <Button size="sm" variant="ghost" className="h-8" onClick={() => {
                                         const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://csv-editorbackend.onrender.com';

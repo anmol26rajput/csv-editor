@@ -11,6 +11,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
     title: 'OmniFile - Universal File Editor',
     description: 'Edit PDF, CSV, Excel, and Word documents online.',
+    icons: {
+        icon: '/favicon.svg',
+    },
 }
 
 export default function RootLayout({

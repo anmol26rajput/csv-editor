@@ -76,47 +76,30 @@ class PDFSplitView(APIView):
                 selected_pages = serializer.validated_data.get('selected_pages')
 
                 if mode == 'extract':
+                    # Extract selected pages into a single merged PDF
                     output_files = service.extract_pages(doc.file.path, temp_dir, selected_pages=selected_pages)
+                elif mode == 'all':
+                    # "Split All" now returns a compressed copy of the full PDF
+                    all_pages = list(range(1, service.get_page_info(doc.file.path)['total_pages'] + 1))
+                    output_files = service.extract_pages(doc.file.path, temp_dir, selected_pages=all_pages)
                 else:
+                    # at_page mode (legacy fallback)
                     output_files = service.split_pdf(doc.file.path, temp_dir, mode=mode, page_number=page_number)
                 
-                # If extract mode, we return the single PDF directly
-                if mode == 'extract' and len(output_files) == 1:
-                    result_path = output_files[0]
-                    result_filename = os.path.basename(result_path)
-                    
-                    new_doc = Document.objects.create(
-                        filename=result_filename,
-                        file_type='pdf',
-                        processing_status='completed'
-                    )
-                    with open(result_path, 'rb') as f:
-                        new_doc.file.save(result_filename, File(f))
-                    
-                    shutil.rmtree(temp_dir)
-                    return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
-
-                # Zip the result if multiple pages or other modes
-                zip_filename = f"{os.path.splitext(doc.filename)[0]}_split.zip"
-                zip_path = os.path.join(settings.MEDIA_ROOT, 'temp', zip_filename)
-                
-                with zipfile.ZipFile(zip_path, 'w') as zipf:
-                    for file in output_files:
-                        zipf.write(file, os.path.basename(file))
+                # Always return a single PDF file
+                result_path = output_files[0]
+                result_filename = os.path.basename(result_path)
                 
                 new_doc = Document.objects.create(
-                   filename=zip_filename,
-                   file_type='zip',
-                   processing_status='completed'
+                    filename=result_filename,
+                    file_type='pdf',
+                    processing_status='completed'
                 )
-                with open(zip_path, 'rb') as f:
-                    new_doc.file.save(zip_filename, File(f))
-
-                # Cleanup
+                with open(result_path, 'rb') as f:
+                    new_doc.file.save(result_filename, File(f))
+                
+                # Cleanup temp
                 shutil.rmtree(temp_dir)
-                if os.path.exists(zip_path):
-                    os.remove(zip_path)
-                    
                 return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
 
             except Exception as e:
