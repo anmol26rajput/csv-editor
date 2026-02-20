@@ -1,6 +1,7 @@
 import os
 import shutil
 import zipfile
+import uuid
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -59,55 +60,106 @@ class PDFMergeView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PDFSplitView(APIView):
-    @extend_schema(request=PDFSplitSerializer)
     def post(self, request):
-        serializer = PDFSplitSerializer(data=request.data)
-        if serializer.is_valid():
-            file_id = serializer.validated_data['file_id']
-            doc = get_object_or_404(Document, pk=file_id)
-            
-            service = PDFService()
-            temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp', str(doc.id))
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            try:
-                mode = serializer.validated_data.get('mode', 'all')
-                page_number = serializer.validated_data.get('page_number')
-                selected_pages = serializer.validated_data.get('selected_pages')
+        # Allow either direct file upload or file_id
+        file_obj = request.FILES.get('file')
+        file_id = request.data.get('file_id')
+        
+        mode = request.data.get('mode', 'all')
+        page_number = request.data.get('page_number')
+        
+        # Parse selected_pages from form-data (often a comma-separated string)
+        selected_pages_raw = request.data.get('selected_pages')
+        selected_pages = []
+        if selected_pages_raw:
+            if isinstance(selected_pages_raw, str):
+                try:
+                    selected_pages = [int(p.strip()) for p in selected_pages_raw.split(',') if p.strip().isdigit()]
+                except Exception:
+                    pass
+            elif isinstance(selected_pages_raw, list):
+                selected_pages = [int(p) for p in selected_pages_raw]
 
-                if mode == 'extract':
-                    # Extract selected pages into a single merged PDF
-                    output_files = service.extract_pages(doc.file.path, temp_dir, selected_pages=selected_pages)
-                elif mode == 'all':
-                    # "Split All" now returns a compressed copy of the full PDF
-                    all_pages = list(range(1, service.get_page_info(doc.file.path)['total_pages'] + 1))
-                    output_files = service.extract_pages(doc.file.path, temp_dir, selected_pages=all_pages)
-                else:
-                    # at_page mode (legacy fallback)
-                    output_files = service.split_pdf(doc.file.path, temp_dir, mode=mode, page_number=page_number)
-                
-                # Always return a single PDF file
+        if not file_obj and not file_id:
+            return Response({"error": "Must provide either 'file' or 'file_id'"}, status=status.HTTP_400_BAD_REQUEST)
+
+        service = PDFService()
+        
+        # Determine source file path
+        temp_input_dir = None
+        if file_obj:
+            source_filename = file_obj.name
+            doc_id_str = "direct_upload"
+            temp_input_dir = os.path.join(settings.MEDIA_ROOT, 'temp', 'input_' + str(uuid.uuid4()))
+            os.makedirs(temp_input_dir, exist_ok=True)
+            source_path = os.path.join(temp_input_dir, source_filename)
+            with open(source_path, 'wb+') as dest:
+                for chunk in file_obj.chunks():
+                    dest.write(chunk)
+        else:
+            doc = get_object_or_404(Document, pk=file_id)
+            source_path = doc.file.path
+            source_filename = doc.filename
+            doc_id_str = str(doc.id)
+
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp', doc_id_str + "_output_" + str(uuid.uuid4()))
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        try:
+            if mode == 'extract':
+                if not selected_pages:
+                    raise ValueError("selected_pages is required for extract mode")
+                output_files = service.extract_pages(source_path, temp_dir, selected_pages=selected_pages)
+            elif mode == 'remove':
+                if not selected_pages:
+                    raise ValueError("selected_pages is required for remove mode")
+                total_pages = service.get_page_info(source_path)['total_pages']
+                pages_to_keep = [p for p in range(1, total_pages + 1) if p not in selected_pages]
+                if not pages_to_keep:
+                    raise ValueError("Cannot remove all pages from the document.")
+                output_files = service.extract_pages(source_path, temp_dir, selected_pages=pages_to_keep)
+            elif mode == 'all':
+                output_files = service.split_pdf(source_path, temp_dir, mode='all')
+            else:
+                if not page_number:
+                    raise ValueError("page_number is required for at_page mode")
+                output_files = service.split_pdf(source_path, temp_dir, mode=mode, page_number=int(page_number))
+            
+            if mode == 'all':
+                # Zip all output files
+                zip_filename = f"{os.path.splitext(source_filename)[0]}_split_all.zip"
+                zip_path = os.path.join(temp_dir, zip_filename)
+                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                    for f in output_files:
+                        zipf.write(f, os.path.basename(f))
+                result_path = zip_path
+                result_filename = zip_filename
+                file_type = 'zip'
+            else:
                 result_path = output_files[0]
                 result_filename = os.path.basename(result_path)
-                
-                new_doc = Document.objects.create(
-                    filename=result_filename,
-                    file_type='pdf',
-                    processing_status='completed'
-                )
-                with open(result_path, 'rb') as f:
-                    new_doc.file.save(result_filename, File(f))
-                
-                # Cleanup temp
+                file_type = 'pdf'
+            
+            new_doc = Document.objects.create(
+                filename=result_filename,
+                file_type=file_type,
+                processing_status='completed'
+            )
+            with open(result_path, 'rb') as f:
+                new_doc.file.save(result_filename, File(f))
+            
+            if temp_input_dir and os.path.exists(temp_input_dir):
+                shutil.rmtree(temp_input_dir)
+            shutil.rmtree(temp_dir)
+            
+            return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            if temp_input_dir and os.path.exists(temp_input_dir):
+                shutil.rmtree(temp_input_dir)
+            if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
-                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
-
-            except Exception as e:
-                if os.path.exists(temp_dir):
-                    shutil.rmtree(temp_dir)
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class PDFReorderView(APIView):
     @extend_schema(request=PDFReorderSerializer)

@@ -2,22 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Scissors, Download, FileText, Layout, Split } from 'lucide-react';
+import { Scissors, Download, FileText, Layout, Split, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from './FileUploader';
 
 interface PDFSplitProps {
-    initialFile?: UploadedFile | null;
+    initialFile?: UploadedFile | null; // Keep for compatibility if needed, though we prefer File
 }
 
 export default function PDFSplit({ initialFile }: PDFSplitProps) {
-    const [file, setFile] = useState<UploadedFile | null>(initialFile || null);
-
+    const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(initialFile || null);
+    const [rawFile, setRawFile] = useState<File | null>(null);
 
     useEffect(() => {
         if (initialFile) {
-            setFile(initialFile);
+            setUploadedFile(initialFile);
         }
     }, [initialFile]);
 
@@ -28,58 +28,87 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
 
     // Fetch page count when file changes
     useEffect(() => {
-        if (file) {
-            // Correct API URL: backend expects pages/<file_id>
-            api.get(`/api/v1/tools/pdf/pages/${file.id}/`)
+        if (uploadedFile) {
+            api.get(`/api/v1/tools/pdf/pages/${uploadedFile.id}/`)
                 .then(res => {
                     setTotalPages(res.data.total_pages);
-                    // Reset split page to middle or something reasonable, or just 1
                     if (res.data.total_pages > 1) {
                         setSplitPage(String(Math.floor(res.data.total_pages / 2)));
                     }
                 })
                 .catch(err => console.error("Failed to fetch page info", err));
+        } else if (rawFile) {
+            // Read local file page count using pdf.js
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const typedarray = new Uint8Array(e.target?.result as ArrayBuffer);
+                    const pdfjsLib = await import('pdfjs-dist');
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    setTotalPages(pdf.numPages);
+                    if (pdf.numPages > 1) {
+                        setSplitPage(String(Math.floor(pdf.numPages / 2)));
+                    }
+                } catch (err) {
+                    console.error("Failed to read local PDF", err);
+                    setTotalPages(0);
+                }
+            };
+            reader.readAsArrayBuffer(rawFile);
         } else {
             setTotalPages(0);
         }
-    }, [file]);
+    }, [uploadedFile, rawFile]);
 
     const [processing, setProcessing] = useState(false);
     const [results, setResults] = useState<UploadedFile[]>([]);
 
-    const handleUpload = (uploadedFile: UploadedFile) => {
-        setFile(uploadedFile);
+    const handleFileSelect = (file: File) => {
+        setRawFile(file);
+        setUploadedFile(null);
         setResults([]);
         setMode('all');
         setSelectedPages([]);
     };
 
     const handleSplit = async () => {
-        if (!file) return;
+        if (!uploadedFile && !rawFile) return;
         setProcessing(true);
         try {
-            const payload: any = {
-                file_id: file.id,
-                mode: mode
-            };
+            const formData = new FormData();
 
-            if (mode === 'at_page') {
-                // Map 'at_page' (Single Page) mode to 'extract' mode with one page
-                payload.mode = 'extract';
-                payload.selected_pages = [parseInt(splitPage)];
-            } else if (mode === 'extract') {
-                payload.selected_pages = selectedPages;
+            if (rawFile) {
+                formData.append('file', rawFile);
+            } else if (uploadedFile) {
+                formData.append('file_id', uploadedFile.id);
             }
 
-            const response = await api.post('/api/v1/tools/pdf/split/', payload);
+            formData.append('mode', mode);
+
+            if (mode === 'at_page') {
+                formData.append('mode', 'extract');
+                formData.append('selected_pages', String(splitPage));
+            } else if (mode === 'extract') {
+                formData.append('mode', mode);
+                formData.append('selected_pages', selectedPages.join(','));
+            }
+
+            const response = await api.post('/api/v1/tools/pdf/split/', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             // Backend always returns a single PDF now
             const data = response.data;
+            let resultFilenameSuffix = '_extracted.pdf';
+            if (mode === 'all') resultFilenameSuffix = '_split_all.zip';
+            const originalFilename = rawFile ? rawFile.name : (uploadedFile ? uploadedFile.filename : 'document.pdf');
 
             const resultFile: UploadedFile = {
                 id: data.id,
-                filename: file.filename.replace('.pdf', '_extracted.pdf'),
+                filename: originalFilename.replace('.pdf', resultFilenameSuffix),
                 file: data.url,
-                file_type: 'pdf',
+                file_type: mode === 'all' ? 'zip' : 'pdf',
                 size_bytes: 0,
             };
             setResults([resultFile]);
@@ -98,8 +127,8 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                     <CardTitle className="text-lg">Select File</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {!file ? (
-                        <FileUploader onUploadComplete={handleUpload} accept=".pdf" label="Upload PDF to Split" />
+                    {!uploadedFile && !rawFile ? (
+                        <FileUploader onFileSelect={handleFileSelect} accept=".pdf" label="Upload PDF to Split" />
                     ) : (
                         <div className="space-y-6">
                             <div className="p-4 border border-indigo-100 bg-indigo-50 rounded-lg">
@@ -108,14 +137,16 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                         <FileText className="h-6 w-6 text-indigo-600" />
                                     </div>
                                     <div className="overflow-hidden">
-                                        <p className="font-medium text-gray-900 truncate">{file.filename}</p>
+                                        <p className="font-medium text-gray-900 truncate">
+                                            {rawFile ? rawFile.name : uploadedFile?.filename}
+                                        </p>
                                         <p className="text-xs text-gray-500">
-                                            {(file.size_bytes / 1024).toFixed(1)} KB
-                                            {totalPages > 0 && ` • ${totalPages} pages`}
+                                            {rawFile ? (rawFile.size / 1024).toFixed(1) : (uploadedFile ? (uploadedFile.size_bytes / 1024).toFixed(1) : 0)} KB
+                                            {totalPages > 0 && totalPages !== 100 && ` • ${totalPages} pages`}
                                         </p>
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => { setFile(null); setResults([]); }} className="w-full mt-2">
+                                <Button variant="outline" size="sm" onClick={() => { setUploadedFile(null); setRawFile(null); setResults([]); }} className="w-full mt-2">
                                     Change File
                                 </Button>
                             </div>
@@ -151,7 +182,6 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                         </div>
                                     </div>
 
-                                    {/* Handle 'extract' mode */}
                                     <div
                                         className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'extract' ? 'border-primary bg-accent/10 border-indigo-600 bg-indigo-50' : 'border-muted bg-popover hover:bg-gray-50'}`}
                                         onClick={() => setMode('extract')}
@@ -253,34 +283,63 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                 <CardHeader>
                     <CardTitle className="text-lg flex justify-between items-center">
                         <span>Result</span>
-                        {results.length > 0 && <span className="text-sm font-normal text-green-600">{results.length} files created</span>}
+                        {results.length > 0 && <span className="text-sm font-normal text-green-600">Document ready</span>}
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1">
+                <CardContent className="flex-1 flex flex-col p-4">
                     {results.length === 0 ? (
                         <div className="h-full flex items-center justify-center text-gray-400 text-sm min-h-[200px]">
                             {processing ? "Splitting document..." : "Resulting pages will appear here"}
                         </div>
                     ) : (
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                            {results.map((resFile, idx) => (
-                                <div key={resFile.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:shadow-md transition-shadow">
-                                    <span className="text-sm font-medium text-gray-700">
-                                        {resFile.filename}
-                                    </span>
-                                    <Button size="sm" variant="ghost" className="h-8" onClick={() => {
-                                        const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://csv-editorbackend.onrender.com';
-                                        // Ensure backend URL doesn't have trailing slash if file path starts with /
-                                        const baseUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+                        <div className="flex-1 flex flex-col space-y-3 min-h-[500px]">
+                            {results.map((resFile, idx) => {
+                                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://csv-editorbackend.onrender.com/api/v1';
+                                const backendUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
+                                const baseUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+                                const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${baseUrl}${resFile.file}`;
 
-                                        const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${baseUrl}${resFile.file}`;
-                                        const viewerUrl = `/tools/pdf/view?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(resFile.filename)}`;
-                                        window.location.href = viewerUrl;
-                                    }}>
-                                        <Download className="h-4 w-4 mr-1" /> View & Download
-                                    </Button>
-                                </div>
-                            ))}
+                                return (
+                                    <div key={resFile.id} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden relative" style={{ height: resFile.filename.endsWith('.zip') ? 'auto' : '500px' }}>
+                                        <div className="p-3 bg-gray-50 border-b border-gray-200">
+                                            <span className="text-sm font-medium text-gray-700 truncate block w-full" title={resFile.filename}>
+                                                {resFile.filename}
+                                            </span>
+                                        </div>
+                                        {resFile.filename.endsWith('.zip') ? (
+                                            <div className="flex-1 bg-white p-8 flex flex-col items-center justify-center min-h-[300px]">
+                                                <div className="bg-indigo-50 p-4 rounded-full mb-4">
+                                                    <Layout className="h-10 w-10 text-indigo-600" />
+                                                </div>
+                                                <h3 className="text-lg font-medium text-gray-900 mb-2">ZIP Archive Ready</h3>
+                                                <p className="text-sm text-gray-500 mb-6 text-center max-w-sm">
+                                                    Your PDF has been successfully split into individual pages and packaged into a ZIP archive.
+                                                </p>
+                                                <Button onClick={() => {
+                                                    const link = document.createElement('a');
+                                                    link.href = fileUrl;
+                                                    link.download = resFile.filename;
+                                                    document.body.appendChild(link);
+                                                    link.click();
+                                                    document.body.removeChild(link);
+                                                }}>
+                                                    Download ZIP
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex-1 bg-gray-100">
+                                                <iframe
+                                                    id={`pdf-iframe-${resFile.id}`}
+                                                    src={fileUrl}
+                                                    className="w-full h-full border-0 absolute bottom-0 right-0 left-0"
+                                                    style={{ height: 'calc(100% - 57px)' }}
+                                                    title="PDF Preview"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </CardContent>

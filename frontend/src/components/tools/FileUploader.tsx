@@ -15,16 +15,24 @@ export interface UploadedFile {
 }
 
 interface FileUploaderProps {
-    onUploadComplete: (file: UploadedFile) => void;
+    onUploadComplete?: (file: UploadedFile) => void;
+    onFileSelect?: (file: File) => void;
     accept?: string;
     label?: string;
 }
 
-export default function FileUploader({ onUploadComplete, accept = ".pdf", label = "Upload File" }: FileUploaderProps) {
+export default function FileUploader({ onUploadComplete, onFileSelect, accept = ".pdf", label = "Upload File" }: FileUploaderProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
 
     const uploadFile = async (file: File) => {
+        if (onFileSelect) {
+            onFileSelect(file);
+            return;
+        }
+
+        if (!onUploadComplete) return;
+
         setUploading(true);
         const formData = new FormData();
         formData.append('file', file);
