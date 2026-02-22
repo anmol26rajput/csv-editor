@@ -1,33 +1,86 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 import { UploadedFile } from './FileUploader';
+import { renderAsync } from 'docx-preview';
 
 export default function DocxPreview({ file }: { file: UploadedFile }) {
-    const [html, setHtml] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (file) {
-            setLoading(true);
-            api.get(`/api/v1/tools/docx/${file.id}/preview/`)
-                .then(res => setHtml(res.data.html))
-                .catch(err => setError('Failed to load preview'))
-                .finally(() => setLoading(false));
-        }
-    }, [file]);
+        let isMounted = true;
 
-    if (loading) {
-        return (
-            <div className="flex flex-col justify-center items-center p-16 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-100 min-h-[500px]">
-                <Loader2 className="h-12 w-12 animate-spin text-indigo-500 mb-4" />
-                <p className="text-indigo-600 font-medium">Loading preview...</p>
-            </div>
-        );
-    }
+        const renderDocx = async () => {
+            if (!containerRef.current) return;
+
+            // Wait a tiny bit to ensure the ref is definitely attached and file is loaded
+            await new Promise(r => setTimeout(r, 100));
+            if (!isMounted) return;
+
+            setLoading(true);
+            setError('');
+
+            try {
+                if (!file || !file.file) {
+                    throw new Error("Missing document URL from server.");
+                }
+
+                let fetchUrl = file.file;
+
+                // Construct absolute URL if it is a relative media path
+                if (fetchUrl.startsWith('/')) {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL
+                        ? process.env.NEXT_PUBLIC_API_URL.replace('/api/v1', '')
+                        : 'http://127.0.0.1:8000';
+                    fetchUrl = `${baseUrl}${fetchUrl}`;
+                }
+
+                console.log("Fetching DOCX from:", fetchUrl);
+
+                const res = await fetch(fetchUrl);
+                if (!res.ok) {
+                    throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+                }
+
+                const blob = await res.blob();
+
+                if (!isMounted) return;
+
+                if (containerRef.current) {
+                    containerRef.current.innerHTML = ''; // prevent duplicate renders
+
+                    await renderAsync(blob, containerRef.current, undefined, {
+                        className: "docx-document",
+                        inWrapper: true,
+                        ignoreWidth: false,
+                        ignoreHeight: false,
+                        ignoreFonts: false,
+                        breakPages: true,
+                        ignoreLastRenderedPageBreak: false,
+                    });
+                }
+            } catch (err: any) {
+                console.error("Docx preview error:", err);
+                if (isMounted) {
+                    setError(err.message || 'Failed to parse document');
+                }
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        renderDocx();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [file]);
 
     if (error) {
         return (
@@ -48,8 +101,16 @@ export default function DocxPreview({ file }: { file: UploadedFile }) {
     }
 
     return (
-        <div className="bg-white p-10 shadow-xl border-2 border-gray-200 rounded-2xl min-h-[600px] prose prose-lg max-w-none hover:shadow-2xl transition-shadow duration-300">
-            <div dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="relative bg-gray-100 p-4 sm:p-8 rounded-2xl border flex justify-center overflow-auto min-h-[600px] max-h-[800px]">
+            {loading && (
+                <div className="absolute inset-0 bg-white/80 z-10 flex flex-col justify-center items-center rounded-2xl">
+                    <Loader2 className="h-12 w-12 animate-spin text-indigo-500 mb-4" />
+                    <p className="text-indigo-600 font-medium">Loading document preview...</p>
+                </div>
+            )}
+            <div ref={containerRef} className="w-full max-w-5xl bg-transparent">
+                {/* docx-preview will render the pages here */}
+            </div>
         </div>
     );
 }

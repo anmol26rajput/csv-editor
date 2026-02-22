@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-import { Loader2, Search, Filter, Download, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Loader2, Search, Filter, Download, ArrowLeft, ArrowRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,14 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
     const [filterColumn, setFilterColumn] = useState('');
     const [filterValue, setFilterValue] = useState('');
     const [showCleanModal, setShowCleanModal] = useState(false);
+
+    // Removal states
+    const [removeType, setRemoveType] = useState<'row' | 'column' | 'date' | 'date_range'>('row');
+    const [removeColumn, setRemoveColumn] = useState('');
+    const [removeRowIndex, setRemoveRowIndex] = useState('');
+    const [removeDate, setRemoveDate] = useState('');
+    const [removeStartDate, setRemoveStartDate] = useState('');
+    const [removeEndDate, setRemoveEndDate] = useState('');
 
     // ... existing fetchData ...
     const fetchData = async (pageNum: number = 1) => {
@@ -57,11 +65,45 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
                 value: filterValue,
                 operator: 'contains'
             });
-            alert(`Filter applied! ${response.data.match_count} matches found. New file created: ${response.data.id}`);
-            // In a real app, we'd switch context to the new file or download it
+            alert(`Filter applied! ${response.data.match_count} matches found. Loading new file...`);
+            if (onFileUpdate) {
+                const newFile = { ...file, id: response.data.id, filename: `filtered_${file.filename}` };
+                onFileUpdate(newFile);
+            }
         } catch (error) {
             console.error("Filter failed", error);
             alert("Filter failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRemove = async () => {
+        setLoading(true);
+        try {
+            const payload: any = {
+                file_id: file.id,
+                remove_type: removeType,
+            };
+
+            if (removeType === 'row') payload.row_index = parseInt(removeRowIndex) - 1; // UI is 1-indexed, pandas is 0-indexed
+            if (removeType === 'column') payload.column = removeColumn;
+            if (removeType === 'date' || removeType === 'date_range') payload.column = removeColumn;
+            if (removeType === 'date') payload.date_val = removeDate;
+            if (removeType === 'date_range') {
+                payload.start_date = removeStartDate;
+                payload.end_date = removeEndDate;
+            }
+
+            const response = await api.post('/api/v1/tools/csv/remove/', payload);
+            alert(`Removal applied! ${response.data.match_count} rows remain. Loading new file...`);
+            if (onFileUpdate) {
+                const newFile = { ...file, id: response.data.id, filename: `removed_${file.filename}` };
+                onFileUpdate(newFile);
+            }
+        } catch (error) {
+            console.error("Removal failed", error);
+            alert("Removal failed");
         } finally {
             setLoading(false);
         }
@@ -110,6 +152,86 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
                             Smart Clean ✨
                         </Button>
                     )}
+                </div>
+
+                {/* Remove Data Toolbar */}
+                <div className="flex gap-2 items-center flex-wrap mt-2 pt-2 border-t w-full">
+                    <div className="relative">
+                        <Trash2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400" />
+                        <select
+                            className="pl-9 pr-4 py-2 border border-red-200 rounded-lg text-sm bg-red-50 focus:ring-2 focus:ring-red-500 outline-none appearance-none text-red-700"
+                            value={removeType}
+                            onChange={(e: any) => setRemoveType(e.target.value)}
+                        >
+                            <option value="row">Remove Row</option>
+                            <option value="column">Remove Column</option>
+                            <option value="date">Remove Date</option>
+                            <option value="date_range">Remove Date Range</option>
+                        </select>
+                    </div>
+
+                    {removeType === 'column' && (
+                        <select
+                            className="px-4 py-2 border border-red-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none appearance-none"
+                            value={removeColumn}
+                            onChange={(e) => setRemoveColumn(e.target.value)}
+                        >
+                            <option value="">Select Target Column</option>
+                            {data.columns.map(col => <option key={col} value={col}>{col}</option>)}
+                        </select>
+                    )}
+
+                    {removeType === 'row' && (
+                        <input
+                            type="number"
+                            placeholder="Row # (e.g. 1)"
+                            className="px-4 py-2 w-32 border border-red-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none"
+                            value={removeRowIndex}
+                            onChange={(e) => setRemoveRowIndex(e.target.value)}
+                            min={1}
+                        />
+                    )}
+
+                    {removeType === 'date' && (
+                        <input
+                            type="date"
+                            className="px-4 py-2 border border-red-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none"
+                            value={removeDate}
+                            onChange={(e) => setRemoveDate(e.target.value)}
+                        />
+                    )}
+
+                    {removeType === 'date_range' && (
+                        <>
+                            <input
+                                type="date"
+                                className="px-4 py-2 border border-red-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none"
+                                value={removeStartDate}
+                                onChange={(e) => setRemoveStartDate(e.target.value)}
+                            />
+                            <span className="text-gray-400">to</span>
+                            <input
+                                type="date"
+                                className="px-4 py-2 border border-red-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none"
+                                value={removeEndDate}
+                                onChange={(e) => setRemoveEndDate(e.target.value)}
+                            />
+                        </>
+                    )}
+
+                    <Button
+                        size="sm"
+                        onClick={handleRemove}
+                        variant="destructive"
+                        disabled={
+                            (removeType === 'row' && !removeRowIndex) ||
+                            (removeType === 'column' && !removeColumn) ||
+                            (removeType === 'date' && !removeDate) ||
+                            (removeType === 'date_range' && (!removeStartDate || !removeEndDate))
+                        }
+                    >
+                        Apply Removal
+                    </Button>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm text-gray-500">

@@ -30,7 +30,7 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
         try {
             setLoading(true);
             setError('');
-            const response = await api.get(`/api/v1/tools/docx/pages/${file.id}/`);
+            const response = await api.get(`/api/v1/tools/docx/${file.id}/pages/`);
             const pageData = response.data;
 
             setTotalPages(pageData.total_pages);

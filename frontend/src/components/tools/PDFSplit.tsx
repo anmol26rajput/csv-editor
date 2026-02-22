@@ -17,19 +17,13 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
 
     // Split configuration
     const [mode, setMode] = useState<'all' | 'at_page'>('all');
-    const [splitPage, setSplitPage] = useState<number | ''>(1);
+    const [splitPage, setSplitPage] = useState<string>("1");
 
     useEffect(() => {
         if (initialFile) {
             setFile(initialFile);
         }
-    }, [initialFile]);
-
-    const [totalPages, setTotalPages] = useState(0);
-    const [splitPage, setSplitPage] = useState<string>("1");
-    const [mode, setMode] = useState<'all' | 'at_page'>('all');
-
-    // Fetch page count when file changes
+    }, [initialFile]);    // Fetch page count when file changes
     useEffect(() => {
         if (file) {
             // Correct API URL: backend expects pages/<file_id>

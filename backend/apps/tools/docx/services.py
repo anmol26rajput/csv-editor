@@ -215,19 +215,21 @@ class DocxService:
         total_paragraphs = len(doc.paragraphs)
         
         for paragraph in doc.paragraphs:
-            # Check for hard page breaks
-            if paragraph._element.xpath('.//w:br[@w:type="page"]'):
-                page_breaks += 1
+            # Check for hard page breaks or soft rendered breaks
+            breaks = paragraph._element.xpath('.//w:br[@w:type="page"] | .//w:lastRenderedPageBreak')
+            if breaks:
+                page_breaks += len(breaks)
         
         # Minimum 1 page, plus any page breaks found
-        total_pages = page_breaks + 1
+        total_pages = max(1, page_breaks + 1)
         
         pages = []
         current_page = 1
         page_content_start = 0
         
         for idx, paragraph in enumerate(doc.paragraphs):
-            has_page_break = bool(paragraph._element.xpath('.//w:br[@w:type="page"]'))
+            breaks = paragraph._element.xpath('.//w:br[@w:type="page"] | .//w:lastRenderedPageBreak')
+            has_page_break = bool(breaks)
             
             if has_page_break or idx == len(doc.paragraphs) - 1:
                 pages.append({
