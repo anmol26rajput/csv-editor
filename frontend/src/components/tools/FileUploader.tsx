@@ -10,7 +10,7 @@ export interface UploadedFile {
     filename: string;
     file_type: string;
     size_bytes: number;
-    file: string;
+    url: string;
     created_at?: string;
 }
 

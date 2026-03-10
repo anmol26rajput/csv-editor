@@ -5,15 +5,13 @@ import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from '@/components/tools/FileUploader';
-import DocxPreview from '@/components/tools/DocxPreview';
-import DocxEditor from '@/components/tools/DocxEditor';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@radix-ui/react-tabs'; // Manual tabs for now
+import dynamic from 'next/dynamic';
+const DocxRichEditor = dynamic(() => import('@/components/tools/DocxRichEditor'), { ssr: false });
 import { cn } from '@/lib/utils';
-import { Eye, Edit3, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 function DocxToolsContent() {
     const [file, setFile] = useState<UploadedFile | null>(null);
-    const [mode, setMode] = useState<'preview' | 'edit'>('preview');
     const [loading, setLoading] = useState(false);
     const searchParams = useSearchParams();
     const fileId = searchParams.get('id');
@@ -75,31 +73,6 @@ function DocxToolsContent() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className="inline-flex h-10 items-center justify-center rounded-xl bg-gray-100 p-1 text-gray-500 shadow-inner">
-                                <button
-                                    onClick={() => setMode('preview')}
-                                    className={cn(
-                                        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-300",
-                                        mode === 'preview'
-                                            ? "bg-white text-indigo-600 shadow-md"
-                                            : "hover:text-gray-900 hover:bg-gray-50"
-                                    )}
-                                >
-                                    <Eye className="mr-2 h-4 w-4" /> Preview
-                                </button>
-                                <button
-                                    onClick={() => setMode('edit')}
-                                    className={cn(
-                                        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-300",
-                                        mode === 'edit'
-                                            ? "bg-white text-indigo-600 shadow-md"
-                                            : "hover:text-gray-900 hover:bg-gray-50"
-                                    )}
-                                >
-                                    <Edit3 className="mr-2 h-4 w-4" /> Edit
-                                </button>
-                            </div>
-
                             <button
                                 onClick={() => setFile(null)}
                                 className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold px-4 py-2 rounded-lg hover:bg-indigo-50 transition-all duration-300"
@@ -109,27 +82,8 @@ function DocxToolsContent() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* If in edit mode, show sidebar */}
-                        {mode === 'edit' && (
-                            <div className="lg:col-span-1 transition-all duration-500 animate-slide-in-left">
-                                <Card className="sticky top-4 border-2 border-indigo-100 shadow-lg">
-                                    <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100">
-                                        <CardTitle className="text-lg font-bold text-indigo-900">Editor Tools</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="pt-6">
-                                        <DocxEditor file={file} />
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        )}
-
-                        <div className={cn(
-                            "transition-all duration-500",
-                            mode === 'edit' ? "lg:col-span-2" : "lg:col-span-3"
-                        )}>
-                            <DocxPreview file={file} />
-                        </div>
+                    <div className="w-full">
+                        <DocxRichEditor file={file} />
                     </div>
                 </div>
             )}

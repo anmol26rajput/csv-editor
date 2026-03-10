@@ -7,14 +7,20 @@ from .views import (
     DocxReplaceImageView,
     DocxRemoveImageView,
     DocxPagesView,
-    DocxReorderView
+    DocxReorderView,
+    DocxParagraphsView,
+    DocxUpdateParagraphsView,
+    DocxToPdfView
 )
 
 urlpatterns = [
     path('<uuid:file_id>/preview/', DocxPreviewView.as_view(), name='docx-preview'),
     path('<uuid:file_id>/images/', DocxImagesView.as_view(), name='docx-images'),
     path('<uuid:file_id>/pages/', DocxPagesView.as_view(), name='docx-pages'),
+    path('<uuid:file_id>/paragraphs/', DocxParagraphsView.as_view(), name='docx-paragraphs'),
+    path('<uuid:file_id>/pdf/', DocxToPdfView.as_view(), name='docx-pdf'),
     re_path(r'^replace/?$', DocxReplaceView.as_view(), name='docx-replace'),
+    re_path(r'^paragraphs/update/?$', DocxUpdateParagraphsView.as_view(), name='docx-update-paragraphs'),
     re_path(r'^reorder/?$', DocxReorderView.as_view(), name='docx-reorder'),
     re_path(r'^images/add/?$', DocxAddImageView.as_view(), name='docx-add-image'),
     re_path(r'^images/replace/?$', DocxReplaceImageView.as_view(), name='docx-replace-image'),

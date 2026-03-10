@@ -61,7 +61,7 @@ export default function PDFMerge({ initialFiles }: PDFMergeProps) {
                         <Button variant="outline" onClick={() => { setResult(null); setFiles([]); }}>
                             Merge More
                         </Button>
-                        <Button onClick={() => window.open(result.file, '_blank')}>
+                        <Button onClick={() => window.open(result.url, '_blank')}>
                             Download PDF
                         </Button>
                     </div>

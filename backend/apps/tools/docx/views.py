@@ -73,7 +73,7 @@ class DocxReplaceView(APIView):
                 if os.path.exists(output_path):
                      os.remove(output_path)
                      
-                return Response({'id': new_doc.id, 'file': new_doc.file.url}, status=status.HTTP_201_CREATED)
+                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -126,7 +126,7 @@ class DocxAddImageView(APIView):
                 if os.path.exists(output_path):
                     os.remove(output_path)
                 
-                return Response({'id': new_doc.id, 'file': new_doc.file.url}, status=status.HTTP_201_CREATED)
+                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -164,7 +164,7 @@ class DocxReplaceImageView(APIView):
                 if os.path.exists(output_path):
                     os.remove(output_path)
                 
-                return Response({'id': new_doc.id, 'file': new_doc.file.url}, status=status.HTTP_201_CREATED)
+                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -201,7 +201,7 @@ class DocxRemoveImageView(APIView):
                 if os.path.exists(output_path):
                     os.remove(output_path)
                 
-                return Response({'id': new_doc.id, 'file': new_doc.file.url}, status=status.HTTP_201_CREATED)
+                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -279,3 +279,99 @@ class DocxReorderView(APIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class DocxParagraphsView(APIView):
+    """Get all paragraphs for a DOCX file"""
+    def get(self, request, file_id):
+        doc = get_object_or_404(Document, pk=file_id)
+        
+        if doc.file_type != 'docx':
+            return Response({'error': 'File must be a DOCX'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        service = DocxService()
+        try:
+            paragraphs = service.get_paragraphs(doc.file.path)
+            return Response({'paragraphs': paragraphs})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DocxUpdateParagraphsSerializer(serializers.Serializer):
+    file_id = serializers.UUIDField()
+    updates = serializers.DictField(
+        child=serializers.CharField(allow_blank=True),
+        help_text="Dictionary of paragraph indices mapping to their new text content (e.g., {'0': 'New text for paragraph zero'})"
+    )
+
+class DocxUpdateParagraphsView(APIView):
+    """Directly overwrite the text of specific paragraphs in a DOCX file"""
+    @extend_schema(request=DocxUpdateParagraphsSerializer)
+    def post(self, request):
+        serializer = DocxUpdateParagraphsSerializer(data=request.data)
+        if serializer.is_valid():
+            file_id = serializer.validated_data['file_id']
+            updates = serializer.validated_data['updates']
+            
+            doc = get_object_or_404(Document, pk=file_id)
+            if doc.file_type != 'docx':
+                return Response({'error': 'File must be a DOCX'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            service = DocxService()
+            
+            try:
+                output_path = service.update_paragraphs(doc.file.path, updates)
+                
+                # Create result document
+                import os
+                from django.core.files import File
+                filename = os.path.basename(output_path)
+                
+                new_doc = Document.objects.create(
+                    filename=filename,
+                    file_type='docx',
+                    processing_status='completed'
+                )
+                with open(output_path, 'rb') as f:
+                    new_doc.file.save(filename, File(f))
+                
+                if os.path.exists(output_path):
+                     os.remove(output_path)
+                     
+                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DocxToPdfView(APIView):
+    """Convert a DOCX file to PDF and return the new PDF document URL"""
+    def get(self, request, file_id):
+        doc = get_object_or_404(Document, pk=file_id)
+        if doc.file_type != 'docx':
+            return Response({'error': 'File must be a DOCX'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        service = DocxService()
+        
+        try:
+            pdf_path = service.convert_to_pdf(doc.file.path)
+            
+            # Create a new document record for the PDF
+            import os
+            from django.core.files import File
+            filename = os.path.basename(pdf_path)
+            
+            new_doc = Document.objects.create(
+                filename=filename,
+                file_type='pdf',
+                processing_status='completed'
+            )
+            with open(pdf_path, 'rb') as f:
+                new_doc.file.save(filename, File(f))
+            
+            if os.path.exists(pdf_path):
+                 os.remove(pdf_path)
+                 
+            return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

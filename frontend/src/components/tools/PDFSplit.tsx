@@ -198,7 +198,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                     <span className="text-sm font-medium text-gray-700">
                                         {mode === 'all' ? ("Page " + (idx + 1)) : ("Part " + (idx + 1))}
                                     </span>
-                                    <Button size="sm" variant="ghost" className="h-8" onClick={() => window.open(resFile.file, '_blank')}>
+                                    <Button size="sm" variant="ghost" className="h-8" onClick={() => window.open(resFile.url, '_blank')}>
                                         <Download className="h-4 w-4 mr-1" /> Save
                                     </Button>
                                 </div>
