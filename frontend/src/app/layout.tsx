@@ -4,12 +4,16 @@ import './globals.css'
 import Link from 'next/link'
 import { Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
     title: 'OmniFile - Universal File Editor',
     description: 'Edit PDF, CSV, Excel, and Word documents online.',
+    icons: {
+        icon: '/favicon.svg',
+    },
 }
 
 export default function RootLayout({
@@ -41,6 +45,7 @@ export default function RootLayout({
 
                 <main className="flex-1 container mx-auto px-4 py-8">
                     {children}
+                    <SpeedInsights />
                 </main>
 
                 <footer className="border-t border-gray-200 bg-white/40 backdrop-blur-sm py-6 text-center text-sm text-gray-500">
