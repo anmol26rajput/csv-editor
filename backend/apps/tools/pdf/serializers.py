@@ -24,6 +24,22 @@ class PDFSplitSerializer(serializers.Serializer):
             raise serializers.ValidationError({"selected_pages": "Selected pages are required when mode is 'extract'"})
         return data
 
+class PDFConvertSerializer(serializers.Serializer):
+    file_id = serializers.UUIDField()
+    target_format = serializers.CharField()
+
+    def validate_target_format(self, value):
+        from .converters import SUPPORTED_FORMATS
+        value = value.lower()
+        if value not in SUPPORTED_FORMATS:
+            raise serializers.ValidationError(
+                f"Unsupported format '{value}'. Supported: {', '.join(SUPPORTED_FORMATS)}"
+            )
+        return value
+
+class PDFToPDFSerializer(serializers.Serializer):
+    file_id = serializers.UUIDField()
+
 class PDFReorderSerializer(serializers.Serializer):
     file_id = serializers.UUIDField()
     page_order = serializers.ListField(

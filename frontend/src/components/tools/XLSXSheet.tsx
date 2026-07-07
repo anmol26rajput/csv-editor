@@ -60,14 +60,14 @@ export default function XLSXSheet({ file }: { file: UploadedFile }) {
     return (
         <div className="space-y-4">
             {/* Sheet Tabs */}
-            <div className="flex overflow-x-auto border-b border-gray-200">
+            <div className="flex overflow-x-auto border-b border-ink-200">
                 {sheets.map(sheet => (
                     <button
                         key={sheet}
                         onClick={() => setActiveSheet(sheet)}
                         className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${activeSheet === sheet
                                 ? 'border-green-500 text-green-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                : 'border-transparent text-ink-500 hover:text-ink-700 hover:border-ink-300'
                             }`}
                     >
                         {sheet}
@@ -80,7 +80,7 @@ export default function XLSXSheet({ file }: { file: UploadedFile }) {
             ) : data ? (
                 <div className="space-y-4">
                     {/* Pagination Toolbar */}
-                    <div className="flex justify-end items-center gap-2 text-sm text-gray-500">
+                    <div className="flex justify-end items-center gap-2 text-sm text-ink-500">
                         <span>{data.total_rows} rows</span>
                         <div className="flex gap-1">
                             <Button variant="outline" size="icon" disabled={page <= 1} onClick={() => fetchSheetData(activeSheet, page - 1)}>
@@ -94,22 +94,22 @@ export default function XLSXSheet({ file }: { file: UploadedFile }) {
                     </div>
 
                     {/* Grid */}
-                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm overflow-x-auto">
+                    <div className="border border-ink-200 rounded-xl overflow-hidden bg-white shadow-sm overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-gray-50 text-gray-700 font-medium">
+                            <thead className="bg-ink-50 text-ink-700 font-medium">
                                 <tr>
                                     {data.columns.map((col) => (
-                                        <th key={col} className="px-4 py-3 border-b border-gray-200 whitespace-nowrap min-w-[150px]">
+                                        <th key={col} className="px-4 py-3 border-b border-ink-200 whitespace-nowrap min-w-[150px]">
                                             {col}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-ink-100">
                                 {data.data.map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={idx} className="hover:bg-ink-50 transition-colors">
                                         {data.columns.map((col) => (
-                                            <td key={`${idx}-${col}`} className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate text-gray-600">
+                                            <td key={`${idx}-${col}`} className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate text-ink-600">
                                                 {row[col]?.toString() || ''}
                                             </td>
                                         ))}
@@ -120,7 +120,7 @@ export default function XLSXSheet({ file }: { file: UploadedFile }) {
                     </div>
                 </div>
             ) : (
-                <div className="text-center p-8 text-gray-500">No data loaded.</div>
+                <div className="text-center p-8 text-ink-500">No data loaded.</div>
             )}
         </div>
     );

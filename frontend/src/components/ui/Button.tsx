@@ -26,24 +26,24 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, variant = "default", size = "default", isLoading, children, ...props }, ref) => {
 
         const variantStyles: Record<string, string> = {
-            default: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm",
-            secondary: "bg-white text-gray-900 border border-gray-200 hover:bg-gray-50 shadow-sm",
-            outline: "border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50",
-            ghost: "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+            default: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-900/20",
+            secondary: "bg-white text-ink-900 border border-ink-200 hover:border-ink-300 hover:bg-ink-50 shadow-sm",
+            outline: "border border-brand-600 text-brand-700 hover:bg-brand-50",
+            ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
             destructive: "bg-red-600 text-white hover:bg-red-700",
         };
 
         const sizeStyles: Record<string, string> = {
             default: "h-10 px-4 py-2",
             sm: "h-8 px-3 text-xs",
-            lg: "h-12 px-8 text-lg",
+            lg: "h-12 px-7 text-base",
             icon: "h-10 w-10 p-2",
         };
 
         return (
             <button
                 className={cn(
-                    "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+                    "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
                     variantStyles[variant],
                     sizeStyles[size],
                     className

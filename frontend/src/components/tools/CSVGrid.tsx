@@ -110,7 +110,7 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
     };
 
     if (loading && !data) {
-        return <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-indigo-500" /></div>;
+        return <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-brand-500" /></div>;
     }
 
     if (!data) return null;
@@ -118,12 +118,12 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
     return (
         <div className="space-y-4">
             {/* Toolbar */}
-            <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-xl border border-ink-200 shadow-sm">
                 <div className="flex gap-2 items-center flex-wrap">
                     <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
                         <select
-                            className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                            className="pl-9 pr-4 py-2 border border-ink-200 rounded-lg text-sm bg-ink-50 focus:ring-2 focus:ring-brand-500 outline-none appearance-none"
                             value={filterColumn}
                             onChange={(e) => setFilterColumn(e.target.value)}
                         >
@@ -134,7 +134,7 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
                     <input
                         type="text"
                         placeholder="Filter value..."
-                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="px-4 py-2 border border-ink-200 rounded-lg text-sm bg-ink-50 focus:ring-2 focus:ring-brand-500 outline-none"
                         value={filterValue}
                         onChange={(e) => setFilterValue(e.target.value)}
                     />
@@ -147,7 +147,7 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
                             size="sm"
                             variant="secondary"
                             onClick={() => setShowCleanModal(true)}
-                            className="bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 border border-purple-200"
+                            className="bg-brand-50 text-brand-700 hover:bg-brand-100 hover:text-brand-800 border border-brand-200"
                         >
                             Smart Clean ✨
                         </Button>
@@ -209,7 +209,7 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
                                 value={removeStartDate}
                                 onChange={(e) => setRemoveStartDate(e.target.value)}
                             />
-                            <span className="text-gray-400">to</span>
+                            <span className="text-ink-400">to</span>
                             <input
                                 type="date"
                                 className="px-4 py-2 border border-red-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-red-500 outline-none"
@@ -234,7 +234,7 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
                     </Button>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 text-sm text-ink-500">
                     <span>{data.total_rows} rows</span>
                     <div className="flex gap-1">
                         <Button variant="outline" size="icon" disabled={page <= 1} onClick={() => fetchData(page - 1)}>
@@ -262,22 +262,22 @@ export default function CSVGrid({ file, onFileUpdate }: { file: UploadedFile, on
             )}
 
             {/* Grid */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm overflow-x-auto">
+            <div className="border border-ink-200 rounded-xl overflow-hidden bg-white shadow-sm overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 text-gray-700 font-medium">
+                    <thead className="bg-ink-50 text-ink-700 font-medium">
                         <tr>
                             {data.columns.map((col) => (
-                                <th key={col} className="px-4 py-3 border-b border-gray-200 whitespace-nowrap min-w-[150px]">
+                                <th key={col} className="px-4 py-3 border-b border-ink-200 whitespace-nowrap min-w-[150px]">
                                     {col}
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-ink-100">
                         {data.data.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                            <tr key={idx} className="hover:bg-ink-50 transition-colors">
                                 {data.columns.map((col) => (
-                                    <td key={`${idx}-${col}`} className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate text-gray-600">
+                                    <td key={`${idx}-${col}`} className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate text-ink-600">
                                         {row[col]?.toString() || ''}
                                     </td>
                                 ))}

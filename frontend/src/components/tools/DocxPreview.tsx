@@ -110,12 +110,12 @@ export default function DocxPreview({ file }: { file: UploadedFile }) {
     }
 
     return (
-        <div className="relative bg-gray-100 p-4 sm:p-8 rounded-2xl border flex flex-col items-center overflow-auto min-h-[600px] max-h-[800px]">
+        <div className="relative bg-ink-100 p-4 sm:p-8 rounded-2xl border flex flex-col items-center overflow-auto min-h-[600px] max-h-[800px]">
             {/* Hover Toolbar */}
             <div className="sticky top-0 z-20 w-full max-w-5xl flex justify-end gap-2 mb-4">
                 <button
                     onClick={handlePrint}
-                    className="flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg text-gray-600 font-medium text-sm hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-all shadow-sm"
+                    className="flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur-sm border border-ink-200 rounded-lg text-ink-600 font-medium text-sm hover:text-brand-600 hover:bg-brand-50 hover:border-brand-200 transition-all shadow-sm"
                     title="Print Document"
                 >
                     <Printer className="w-4 h-4" /> Print
@@ -126,7 +126,7 @@ export default function DocxPreview({ file }: { file: UploadedFile }) {
                         download={`edited_${file.filename}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white border border-transparent rounded-lg font-medium text-sm hover:bg-indigo-700 transition-all shadow-sm hover:shadow"
+                        className="flex items-center gap-2 px-3 py-2 bg-brand-600 text-white border border-transparent rounded-lg font-medium text-sm hover:bg-brand-700 transition-all shadow-sm hover:shadow"
                         title="Download Document"
                     >
                         <FileDown className="w-4 h-4" /> Download
@@ -136,8 +136,8 @@ export default function DocxPreview({ file }: { file: UploadedFile }) {
 
             {loading && (
                 <div className="absolute inset-0 bg-white/80 z-10 flex flex-col justify-center items-center rounded-2xl">
-                    <Loader2 className="h-12 w-12 animate-spin text-indigo-500 mb-4" />
-                    <p className="text-indigo-600 font-medium">Loading document preview...</p>
+                    <Loader2 className="h-12 w-12 animate-spin text-brand-500 mb-4" />
+                    <p className="text-brand-600 font-medium">Loading document preview...</p>
                 </div>
             )}
 

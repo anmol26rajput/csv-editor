@@ -109,7 +109,7 @@ export default function XLSXSheetReorder({ file }: { file: UploadedFile }) {
         return (
             <div className="flex flex-col justify-center items-center py-16 space-y-4">
                 <Loader2 className="h-12 w-12 animate-spin text-green-500" />
-                <p className="text-gray-500 font-medium">Loading sheet information...</p>
+                <p className="text-ink-500 font-medium">Loading sheet information...</p>
             </div>
         );
     }
@@ -133,7 +133,7 @@ export default function XLSXSheetReorder({ file }: { file: UploadedFile }) {
                 <div className="mt-6">
                     <button
                         onClick={() => setResult(null)}
-                        className="text-sm text-gray-600 hover:text-gray-900 font-medium hover:underline transition-colors"
+                        className="text-sm text-ink-600 hover:text-ink-900 font-medium hover:underline transition-colors"
                     >
                         Reorder Again
                     </button>
@@ -147,7 +147,7 @@ export default function XLSXSheetReorder({ file }: { file: UploadedFile }) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="w-1 h-6 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></div>
-                    <h3 className="text-lg font-bold text-gray-900">Reorder Sheets</h3>
+                    <h3 className="text-lg font-bold text-ink-900">Reorder Sheets</h3>
                 </div>
                 <Button
                     variant="outline"
@@ -167,7 +167,7 @@ export default function XLSXSheetReorder({ file }: { file: UploadedFile }) {
             )}
 
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border-2 border-green-200">
-                <p className="text-sm text-gray-700 mb-4">
+                <p className="text-sm text-ink-700 mb-4">
                     <strong>Drag and drop</strong> the sheets below to reorder them
                 </p>
 
@@ -181,22 +181,22 @@ export default function XLSXSheetReorder({ file }: { file: UploadedFile }) {
                             onDragEnd={handleDragEnd}
                             className={`
                                 flex items-center gap-4 p-4 bg-white rounded-xl border-2 
-                                ${draggedIndex === index ? 'border-green-500 shadow-lg scale-105' : 'border-gray-200'}
+                                ${draggedIndex === index ? 'border-green-500 shadow-lg scale-105' : 'border-ink-200'}
                                 hover:border-green-300 hover:shadow-md transition-all duration-200 cursor-move
                             `}
                         >
-                            <GripVertical className="h-5 w-5 text-gray-400" />
+                            <GripVertical className="h-5 w-5 text-ink-400" />
                             <div className="flex-1">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded border-2 border-green-200 flex items-center justify-center">
                                         <span className="text-xs font-bold text-green-600">{index + 1}</span>
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-semibold text-gray-900">{sheet.name}</p>
-                                        <p className="text-sm text-gray-500">
+                                        <p className="font-semibold text-ink-900">{sheet.name}</p>
+                                        <p className="text-sm text-ink-500">
                                             {sheet.rows} rows × {sheet.columns} columns
                                         </p>
-                                        <p className="text-xs text-gray-400">
+                                        <p className="text-xs text-ink-400">
                                             Originally position {sheet.originalIndex + 1}
                                         </p>
                                     </div>
@@ -207,7 +207,7 @@ export default function XLSXSheetReorder({ file }: { file: UploadedFile }) {
                 </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-gray-200">
+            <div className="flex justify-end pt-4 border-t border-ink-200">
                 <Button
                     onClick={handleReorder}
                     isLoading={processing}

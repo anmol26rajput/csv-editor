@@ -67,11 +67,11 @@ export default function DocxViewer({ file }: DocxViewerProps) {
     }, [file]);
 
     return (
-        <div className="relative flex justify-center bg-[#f4f5f7] rounded-xl border border-gray-200 min-h-[600px] overflow-hidden">
+        <div className="relative flex justify-center bg-[#f4f5f7] rounded-xl border border-ink-200 min-h-[600px] overflow-hidden">
             {loading && (
                 <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm">
-                    <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
-                    <p className="text-gray-600 font-medium tracking-wide">Rendering document natively...</p>
+                    <Loader2 className="w-10 h-10 text-brand-500 animate-spin mb-4" />
+                    <p className="text-ink-600 font-medium tracking-wide">Rendering document natively...</p>
                 </div>
             )}
 
@@ -80,8 +80,8 @@ export default function DocxViewer({ file }: DocxViewerProps) {
                     <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                         <span className="text-red-500 text-2xl font-bold">!</span>
                     </div>
-                    <h3 className="font-bold text-gray-900 text-lg mb-2">Failed to render</h3>
-                    <p className="text-gray-500">{error}</p>
+                    <h3 className="font-bold text-ink-900 text-lg mb-2">Failed to render</h3>
+                    <p className="text-ink-500">{error}</p>
                 </div>
             )}
 

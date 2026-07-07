@@ -24,6 +24,7 @@ interface FileUploaderProps {
 export default function FileUploader({ onUploadComplete, onFileSelect, accept = ".pdf", label = "Upload File" }: FileUploaderProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const uploadFile = async (file: File) => {
         if (onFileSelect) {
@@ -34,6 +35,7 @@ export default function FileUploader({ onUploadComplete, onFileSelect, accept = 
         if (!onUploadComplete) return;
 
         setUploading(true);
+        setError(null);
         const formData = new FormData();
         formData.append('file', file);
 
@@ -48,9 +50,9 @@ export default function FileUploader({ onUploadComplete, onFileSelect, accept = 
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             onUploadComplete(response.data);
-        } catch (error) {
-            console.error("Upload failed", error);
-            alert("Upload failed");
+        } catch (err) {
+            console.error("Upload failed", err);
+            setError("We couldn't upload that file. Please check your connection and try again.");
         } finally {
             setUploading(false);
         }
@@ -60,7 +62,7 @@ export default function FileUploader({ onUploadComplete, onFileSelect, accept = 
         <div
             className={cn(
                 "border-2 border-dashed rounded-xl p-8 transition-colors flex flex-col items-center justify-center text-center cursor-pointer",
-                isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50",
+                isDragging ? "border-brand-500 bg-brand-50" : "border-ink-200 hover:border-brand-300 hover:bg-ink-50",
                 uploading && "opacity-50 pointer-events-none"
             )}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -87,17 +89,22 @@ export default function FileUploader({ onUploadComplete, onFileSelect, accept = 
             />
 
             {uploading ? (
-                <Loader2 className="h-10 w-10 text-indigo-500 animate-spin mb-2" />
+                <Loader2 className="h-10 w-10 text-brand-500 animate-spin mb-2" />
             ) : (
-                <UploadCloud className="h-10 w-10 text-gray-400 mb-2" />
+                <UploadCloud className="h-10 w-10 text-ink-400 mb-2" />
             )}
 
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium text-ink-700">
                 {uploading ? "Uploading..." : (isDragging ? "Drop to upload" : label)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-ink-500 mt-1">
                 {accept.replace(/\./g, '').toUpperCase()} files supported
             </p>
+            {error && (
+                <p role="alert" className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-4">
+                    {error}
+                </p>
+            )}
         </div>
     );
 }
@@ -107,19 +114,19 @@ export function FileList({ files, onRemove }: { files: UploadedFile[], onRemove:
     return (
         <div className="space-y-2 mt-4">
             {files.map(file => (
-                <div key={file.id} className="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+                <div key={file.id} className="flex items-center justify-between p-3 bg-white border border-ink-100 rounded-lg shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="bg-indigo-100 p-2 rounded-lg">
-                            <FileText className="h-4 w-4 text-indigo-600" />
+                        <div className="bg-brand-100 p-2 rounded-lg">
+                            <FileText className="h-4 w-4 text-brand-600" />
                         </div>
                         <div className="text-sm">
-                            <p className="font-medium text-gray-900 truncate max-w-[200px]">{file.filename}</p>
-                            <p className="text-xs text-gray-400">{(file.size_bytes / 1024).toFixed(1)} KB</p>
+                            <p className="font-medium text-ink-900 truncate max-w-[200px]">{file.filename}</p>
+                            <p className="text-xs text-ink-400">{(file.size_bytes / 1024).toFixed(1)} KB</p>
                         </div>
                     </div>
                     <button
                         onClick={() => onRemove(file.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        className="text-ink-400 hover:text-red-500 transition-colors"
                     >
                         <X className="h-4 w-4" />
                     </button>

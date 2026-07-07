@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from '@/components/tools/FileUploader';
 import dynamic from 'next/dynamic';
 const DocxRichEditor = dynamic(() => import('@/components/tools/DocxRichEditor'), { ssr: false });
-import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 function DocxToolsContent() {
@@ -33,28 +32,24 @@ function DocxToolsContent() {
     }, [fileId]);
 
     return (
-        <div className="space-y-10 max-w-7xl mx-auto px-4">
-            <div className="text-center space-y-3 animate-fade-in">
-                <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent sm:text-5xl">
-                    Word Editor
-                </h1>
-                <p className="mt-3 text-lg text-gray-600">
-                    Preview and Edit DOCX files online with powerful tools.
-                </p>
+        <div className="space-y-8">
+            <div className="max-w-2xl">
+                <h1 className="text-3xl font-bold tracking-tight">Word editor</h1>
+                <p className="mt-2 text-ink-500">Preview and edit DOCX files online.</p>
             </div>
 
             {loading ? (
-                <div className="flex flex-col justify-center items-center py-32 space-y-4">
-                    <Loader2 className="h-16 w-16 animate-spin text-indigo-500" />
-                    <p className="text-gray-500 font-medium">Loading your document...</p>
+                <div className="flex flex-col justify-center items-center py-28 space-y-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-brand-500" />
+                    <p className="text-ink-500 font-medium">Loading your document…</p>
                 </div>
             ) : !file ? (
-                <Card className="max-w-2xl mx-auto border-2 border-dashed border-gray-300 hover:border-indigo-400 transition-all duration-300 hover:shadow-xl">
-                    <CardHeader className="text-center pb-4">
-                        <CardTitle className="text-2xl font-bold text-gray-900">Upload Document</CardTitle>
-                        <p className="text-sm text-gray-500 mt-2">Upload a Word document to get started</p>
+                <Card className="max-w-xl">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Upload a document</CardTitle>
+                        <p className="text-sm text-ink-500">Upload a Word document to get started.</p>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent>
                         <FileUploader
                             onUploadComplete={setFile}
                             accept=".docx"
@@ -63,23 +58,21 @@ function DocxToolsContent() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-white to-gray-50 p-6 rounded-2xl shadow-md border border-gray-200">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-                            <h2 className="text-xl font-bold text-gray-900">{file.filename}</h2>
-                            <span className="text-xs font-medium px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full">
+                <div className="space-y-4 animate-fade-in">
+                    <div className="flex flex-wrap justify-between items-center gap-3 bg-white p-4 rounded-2xl shadow-card border border-ink-200/70">
+                        <h2 className="text-lg font-semibold text-ink-950 flex items-center gap-2">
+                            <span>{file.filename}</span>
+                            <span className="font-mono text-xs font-normal px-2 py-0.5 bg-ink-100 text-ink-500 rounded-md tabular">
                                 {(file.size_bytes / 1024).toFixed(1)} KB
                             </span>
-                        </div>
+                        </h2>
 
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setFile(null)}
-                                className="text-sm text-indigo-600 hover:text-indigo-800 font-semibold px-4 py-2 rounded-lg hover:bg-indigo-50 transition-all duration-300"
-                            >
-                                Change File
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => setFile(null)}
+                            className="text-sm text-brand-700 hover:text-brand-800 font-medium px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
+                        >
+                            Change file
+                        </button>
                     </div>
 
                     <div className="w-full">
@@ -93,7 +86,7 @@ function DocxToolsContent() {
 
 export default function DocxToolsPage() {
     return (
-        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-ink-300" /></div>}>
             <DocxToolsContent />
         </Suspense>
     );
