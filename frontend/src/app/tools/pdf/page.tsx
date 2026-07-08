@@ -3,16 +3,23 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Merge, Scissors, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Merge, Scissors, ArrowUpDown, Repeat, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PDFMerge from '@/components/tools/PDFMerge';
 import PDFSplit from '@/components/tools/PDFSplit';
 import PDFReorder from '@/components/tools/PDFReorder';
-import PDFRemove from '@/components/tools/PDFRemove';
+import PDFConvert from '@/components/tools/PDFConvert';
 import { UploadedFile } from '@/components/tools/FileUploader';
 
+const tabs = [
+    { id: 'convert' as const, label: 'Convert', icon: Repeat },
+    { id: 'merge' as const, label: 'Merge', icon: Merge },
+    { id: 'split' as const, label: 'Split', icon: Scissors },
+    { id: 'reorder' as const, label: 'Reorder', icon: ArrowUpDown },
+];
+
 function PDFToolsContent() {
-    const [activeTab, setActiveTab] = useState<'merge' | 'split' | 'reorder' | 'remove'>('merge');
+    const [activeTab, setActiveTab] = useState<'convert' | 'merge' | 'split' | 'reorder'>('convert');
     const [initialFile, setInitialFile] = useState<UploadedFile | null>(null);
     const searchParams = useSearchParams();
     const fileId = searchParams.get('id');
@@ -32,57 +39,31 @@ function PDFToolsContent() {
     }, [fileId]);
 
     return (
-        <div className="space-y-8 max-w-7xl mx-auto px-4">
-            <div className="text-center">
-                <h1 className="text-4xl sm:text-5xl font-extrabold bg-gradient-to-r from-red-600 via-orange-500 to-pink-500 bg-clip-text text-transparent mb-3">
-                    PDF Tools
-                </h1>
-                <p className="mt-2 text-lg text-gray-600">Merge, Split, Remove, and Reorder your PDF documents.</p>
-            </div>
+        <div className="space-y-8">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="max-w-2xl">
+                    <h1 className="text-3xl font-bold tracking-tight">PDF tools</h1>
+                    <p className="mt-2 text-ink-500">Convert, merge, split, and reorder your PDF documents.</p>
+                </div>
 
-            {/* Custom Tabs */}
-            <div className="flex justify-center flex-wrap gap-2">
-                <div className="inline-flex h-auto items-center justify-center rounded-xl bg-gray-100 p-1 text-gray-500 shadow-inner flex-wrap">
-                    <button
-                        onClick={() => setActiveTab('merge')}
-                        className={cn(
-                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-1.5 text-sm font-semibold transition-all duration-300",
-                            activeTab === 'merge' ? "bg-white text-gray-900 shadow-md" : "hover:text-gray-900 hover:bg-gray-50"
-                        )}
-                    >
-                        <Merge className="mr-2 h-4 w-4" /> Merge
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('split')}
-                        className={cn(
-                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-1.5 text-sm font-semibold transition-all duration-300",
-                            activeTab === 'split' ? "bg-white text-gray-900 shadow-md" : "hover:text-gray-900 hover:bg-gray-50"
-                        )}
-                    >
-                        <Scissors className="mr-2 h-4 w-4" /> Split
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('remove')}
-                        className={cn(
-                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-1.5 text-sm font-semibold transition-all duration-300",
-                            activeTab === 'remove' ? "bg-white text-gray-900 shadow-md" : "hover:text-gray-900 hover:bg-gray-50"
-                        )}
-                    >
-                        <Scissors className="mr-2 h-4 w-4 transform rotate-180" /> Remove
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('reorder')}
-                        className={cn(
-                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-6 py-1.5 text-sm font-semibold transition-all duration-300",
-                            activeTab === 'reorder' ? "bg-white text-gray-900 shadow-md" : "hover:text-gray-900 hover:bg-gray-50"
-                        )}
-                    >
-                        <ArrowUpDown className="mr-2 h-4 w-4" /> Reorder
-                    </button>
+                <div className="inline-flex items-center rounded-xl bg-ink-100 p-1">
+                    {tabs.map(({ id, label, icon: Icon }) => (
+                        <button
+                            key={id}
+                            onClick={() => setActiveTab(id)}
+                            className={cn(
+                                "inline-flex items-center whitespace-nowrap rounded-lg px-5 py-1.5 text-sm font-medium transition-all duration-200",
+                                activeTab === id ? "bg-white text-ink-950 shadow-sm" : "text-ink-500 hover:text-ink-900"
+                            )}
+                        >
+                            <Icon className="mr-2 h-4 w-4" /> {label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            <div className="mt-6 animate-fade-in">
+            <div className="animate-fade-in">
+                {activeTab === 'convert' && <PDFConvert initialFile={initialFile} />}
                 {activeTab === 'merge' && <PDFMerge initialFiles={initialFile ? [initialFile] : []} />}
                 {activeTab === 'split' && <PDFSplit initialFile={initialFile} />}
                 {activeTab === 'remove' && <PDFRemove initialFile={initialFile} />}
@@ -94,7 +75,7 @@ function PDFToolsContent() {
 
 export default function PDFToolsPage() {
     return (
-        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-ink-300" /></div>}>
             <PDFToolsContent />
         </Suspense>
     );

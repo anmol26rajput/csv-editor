@@ -6,6 +6,9 @@ import os
 import base64
 from io import BytesIO
 from PIL import Image
+import subprocess
+import tempfile
+import time
 
 class DocxService:
     def convert_to_html(self, file_path):
@@ -13,6 +16,40 @@ class DocxService:
         with open(file_path, "rb") as docx_file:
             result = mammoth.convert_to_html(docx_file)
             return result.value  # The generated HTML
+
+    def convert_to_pdf(self, file_path):
+        """Convert DOCX to PDF using LibreOffice headless."""
+        outdir = tempfile.gettempdir()
+        
+        # Depending on OS, the libreoffice binary might be named differently
+        # On macOS with homebrew it's usually soffice
+        cmd = [
+            'soffice', 
+            '--headless', 
+            '--convert-to', 'pdf', 
+            '--outdir', outdir, 
+            file_path
+        ]
+        
+        try:
+            # Run the conversion
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            # The output file name is the same as the input, but with .pdf
+            base_name = os.path.splitext(os.path.basename(file_path))[0]
+            pdf_path = os.path.join(outdir, f"{base_name}.pdf")
+            
+            # small delay to ensure file is completely written by OS
+            time.sleep(0.5)
+            
+            if os.path.exists(pdf_path):
+                return pdf_path
+            else:
+                raise Exception(f"PDF file was not found at expected location: {pdf_path}")
+                
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.decode('utf-8') if e.stderr else str(e)
+            raise Exception(f"LibreOffice conversion failed: {error_msg}")
 
     def replace_text(self, file_path, replacements):
         """
@@ -215,19 +252,21 @@ class DocxService:
         total_paragraphs = len(doc.paragraphs)
         
         for paragraph in doc.paragraphs:
-            # Check for hard page breaks
-            if paragraph._element.xpath('.//w:br[@w:type="page"]'):
-                page_breaks += 1
+            # Check for hard page breaks or soft rendered breaks
+            breaks = paragraph._element.xpath('.//w:br[@w:type="page"] | .//w:lastRenderedPageBreak')
+            if breaks:
+                page_breaks += len(breaks)
         
         # Minimum 1 page, plus any page breaks found
-        total_pages = page_breaks + 1
+        total_pages = max(1, page_breaks + 1)
         
         pages = []
         current_page = 1
         page_content_start = 0
         
         for idx, paragraph in enumerate(doc.paragraphs):
-            has_page_break = bool(paragraph._element.xpath('.//w:br[@w:type="page"]'))
+            breaks = paragraph._element.xpath('.//w:br[@w:type="page"] | .//w:lastRenderedPageBreak')
+            has_page_break = bool(breaks)
             
             if has_page_break or idx == len(doc.paragraphs) - 1:
                 pages.append({
@@ -297,4 +336,47 @@ class DocxService:
                 new_doc.add_page_break()
         
         new_doc.save(output_path)
+        return output_path
+
+    def get_paragraphs(self, file_path):
+        """
+        Extracts all paragraphs and their indices.
+        Returns a list of dicts with paragraph index and text content.
+        """
+        doc = DocxDocument(file_path)
+        paragraphs_data = []
+        for i, paragraph in enumerate(doc.paragraphs):
+            # Only return paragraphs that have actual text, to avoid empty spacing blocks
+            text = paragraph.text.strip()
+            if text:
+                paragraphs_data.append({
+                    'index': i,
+                    'text': paragraph.text # Preserve original whitespace in the edit box
+                })
+        return paragraphs_data
+
+    def update_paragraphs(self, file_path, updates):
+        """
+        Updates specific paragraphs by index.
+        updates: dict of paragraph_index (int) -> new_text (str)
+        Returns path to new file.
+        """
+        doc = DocxDocument(file_path)
+        
+        for p_idx_str, new_text in updates.items():
+            try:
+                p_idx = int(p_idx_str)
+                if 0 <= p_idx < len(doc.paragraphs):
+                    # Direct assignment to .text clears all runs and their formatting,
+                    # replacing them with a single run containing the new string.
+                    doc.paragraphs[p_idx].text = new_text
+            except ValueError:
+                continue
+
+        output_dir = os.path.dirname(file_path)
+        filename = os.path.basename(file_path)
+        new_filename = f"updated_text_{filename}"
+        output_path = os.path.join(output_dir, new_filename)
+        
+        doc.save(output_path)
         return output_path

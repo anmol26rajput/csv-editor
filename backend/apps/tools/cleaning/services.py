@@ -3,6 +3,9 @@ import os
 from apps.tools.base import BaseFileService
 
 class CleaningService(BaseFileService):
+    def process(self, *args, **kwargs):
+        pass
+
     def load_dataframe(self, file_path, file_type):
         if file_type == 'csv':
             return pd.read_csv(file_path)

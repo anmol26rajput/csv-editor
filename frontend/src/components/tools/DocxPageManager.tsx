@@ -30,7 +30,7 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
         try {
             setLoading(true);
             setError('');
-            const response = await api.get(`/api/v1/tools/docx/pages/${file.id}/`);
+            const response = await api.get(`/api/v1/tools/docx/${file.id}/pages/`);
             const pageData = response.data;
 
             setTotalPages(pageData.total_pages);
@@ -102,32 +102,32 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
     if (loading) {
         return (
             <div className="flex flex-col justify-center items-center py-16 space-y-4">
-                <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
-                <p className="text-gray-500 font-medium">Loading page information...</p>
+                <Loader2 className="h-12 w-12 animate-spin text-brand-500" />
+                <p className="text-ink-500 font-medium">Loading page information...</p>
             </div>
         );
     }
 
     if (result) {
         return (
-            <div className="text-center py-10 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200 shadow-lg">
-                <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-indigo-500 rounded-full">
+            <div className="text-center py-10 bg-gradient-to-br from-brand-50 to-brand-50 rounded-2xl border-2 border-brand-200 shadow-lg">
+                <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-brand-500 rounded-full">
                     <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-indigo-800 mb-2">Pages Reordered!</h3>
-                <p className="text-sm text-indigo-600 mb-6">Your pages have been reordered successfully</p>
+                <h3 className="text-2xl font-bold text-brand-800 mb-2">Pages Reordered!</h3>
+                <p className="text-sm text-brand-600 mb-6">Your pages have been reordered successfully</p>
                 <Button
                     onClick={() => window.open(result.url, '_blank')}
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-gradient-to-r from-brand-600 to-brand-600 hover:from-brand-700 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                     <Download className="mr-2 h-4 w-4" /> Download Reordered Document
                 </Button>
                 <div className="mt-6">
                     <button
                         onClick={() => setResult(null)}
-                        className="text-sm text-gray-600 hover:text-gray-900 font-medium hover:underline transition-colors"
+                        className="text-sm text-ink-600 hover:text-ink-900 font-medium hover:underline transition-colors"
                     >
                         Reorder Again
                     </button>
@@ -140,14 +140,14 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="w-1 h-6 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
-                    <h3 className="text-lg font-bold text-gray-900">Reorder Pages</h3>
+                    <div className="w-1 h-6 bg-gradient-to-b from-brand-500 to-brand-500 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-ink-900">Reorder Pages</h3>
                 </div>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={handleReset}
-                    className="border-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-300"
+                    className="border-2 border-brand-200 text-brand-600 hover:bg-brand-50 hover:border-brand-300 transition-all duration-300"
                 >
                     <RotateCcw className="mr-2 h-4 w-4" />
                     Reset Order
@@ -160,8 +160,8 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
                 </div>
             )}
 
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl border-2 border-indigo-200">
-                <p className="text-sm text-gray-700 mb-4">
+            <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-6 rounded-2xl border-2 border-brand-200">
+                <p className="text-sm text-ink-700 mb-4">
                     <strong>Drag and drop</strong> to reorder pages
                 </p>
 
@@ -181,12 +181,12 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
                             {/* Page Preview Card */}
                             <div className={`
                                 bg-white rounded-lg border-2 overflow-hidden shadow-sm
-                                ${draggedIndex === index ? 'border-indigo-500 shadow-lg' : 'border-gray-200 hover:border-indigo-300'}
+                                ${draggedIndex === index ? 'border-brand-500 shadow-lg' : 'border-ink-200 hover:border-brand-300'}
                                 transition-all duration-200
                             `}>
                                 {/* Page Number Badge */}
                                 <div className="absolute top-2 left-2 z-10">
-                                    <div className="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md">
+                                    <div className="bg-brand-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md">
                                         {index + 1}
                                     </div>
                                 </div>
@@ -194,32 +194,32 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
                                 {/* Drag Handle */}
                                 <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div className="bg-white/90 p-1 rounded shadow">
-                                        <GripVertical className="h-4 w-4 text-gray-600" />
+                                        <GripVertical className="h-4 w-4 text-ink-600" />
                                     </div>
                                 </div>
 
                                 {/* Page Preview */}
-                                <div className="aspect-[8.5/11] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center relative">
+                                <div className="aspect-[8.5/11] bg-gradient-to-br from-ink-50 to-ink-100 flex items-center justify-center relative">
                                     <div className="text-center p-4">
-                                        <div className="text-4xl font-bold text-gray-300 mb-2">
+                                        <div className="text-4xl font-bold text-ink-300 mb-2">
                                             {index + 1}
                                         </div>
-                                        <div className="text-xs text-gray-400">
+                                        <div className="text-xs text-ink-400">
                                             Page {index + 1}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Page Info Footer */}
-                                <div className="px-3 py-2 bg-gray-50 border-t border-gray-200">
-                                    <p className="text-xs text-gray-600 text-center truncate">
+                                <div className="px-3 py-2 bg-ink-50 border-t border-ink-200">
+                                    <p className="text-xs text-ink-600 text-center truncate">
                                         {page.originalIndex !== index && (
-                                            <span className="text-indigo-600 font-medium">
+                                            <span className="text-brand-600 font-medium">
                                                 Was page {page.originalIndex + 1}
                                             </span>
                                         )}
                                         {page.originalIndex === index && (
-                                            <span className="text-gray-500">
+                                            <span className="text-ink-500">
                                                 Original position
                                             </span>
                                         )}
@@ -231,12 +231,12 @@ export default function DocxPageManager({ file }: { file: UploadedFile }) {
                 </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-gray-200">
+            <div className="flex justify-end pt-4 border-t border-ink-200">
                 <Button
                     onClick={handleReorder}
                     isLoading={processing}
                     disabled={processing || totalPages <= 1}
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-gradient-to-r from-brand-600 to-brand-600 hover:from-brand-700 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                     {processing ? (
                         <>

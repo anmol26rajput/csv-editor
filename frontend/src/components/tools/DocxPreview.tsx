@@ -1,33 +1,95 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Printer, FileDown } from 'lucide-react';
 import { UploadedFile } from './FileUploader';
+import { renderAsync } from 'docx-preview';
 
 export default function DocxPreview({ file }: { file: UploadedFile }) {
-    const [html, setHtml] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [absoluteUrl, setAbsoluteUrl] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (file) {
+        let isMounted = true;
+
+        const renderDocx = async () => {
+            if (!containerRef.current) return;
+
+            // Wait a tiny bit to ensure the ref is definitely attached and file is loaded
+            await new Promise(r => setTimeout(r, 100));
+            if (!isMounted) return;
+
             setLoading(true);
-            api.get(`/api/v1/tools/docx/${file.id}/preview/`)
-                .then(res => setHtml(res.data.html))
-                .catch(err => setError('Failed to load preview'))
-                .finally(() => setLoading(false));
-        }
+            setError('');
+
+            try {
+                if (!file || !file.url) {
+                    throw new Error("Missing document URL from server.");
+                }
+
+                let fetchUrl = file.url;
+
+                // Construct absolute URL if it is a relative media path (usually starting with /media/)
+                // But avoid prepending the base URL if it's already an absolute HTTP/HTTPS URL
+                if (fetchUrl.startsWith('/') && !fetchUrl.startsWith('http')) {
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL
+                        ? process.env.NEXT_PUBLIC_API_URL.replace('/api/v1', '')
+                        : 'http://127.0.0.1:8000';
+                    fetchUrl = `${baseUrl}${fetchUrl}`;
+                }
+
+                setAbsoluteUrl(fetchUrl);
+                console.log("Fetching DOCX from:", fetchUrl);
+
+                const res = await fetch(fetchUrl);
+                if (!res.ok) {
+                    throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+                }
+
+                const blob = await res.blob();
+
+                if (!isMounted) return;
+
+                if (containerRef.current) {
+                    containerRef.current.innerHTML = ''; // prevent duplicate renders
+
+                    await renderAsync(blob, containerRef.current, undefined, {
+                        className: "docx-document",
+                        inWrapper: true,
+                        ignoreWidth: false,
+                        ignoreHeight: false,
+                        ignoreFonts: false,
+                        breakPages: true,
+                        ignoreLastRenderedPageBreak: false,
+                    });
+                }
+            } catch (err: any) {
+                console.error("Docx preview error:", err);
+                if (isMounted) {
+                    setError(err.message || 'Failed to parse document');
+                }
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        renderDocx();
+
+        return () => {
+            isMounted = false;
+        };
     }, [file]);
 
-    if (loading) {
-        return (
-            <div className="flex flex-col justify-center items-center p-16 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-100 min-h-[500px]">
-                <Loader2 className="h-12 w-12 animate-spin text-indigo-500 mb-4" />
-                <p className="text-indigo-600 font-medium">Loading preview...</p>
-            </div>
-        );
-    }
+    const handlePrint = () => {
+        // Trigger browser print dialog for the current window.
+        // It's helpful to add a specific print-only CSS class or media query if you want only the document to show.
+        window.print();
+    };
 
     if (error) {
         return (
@@ -48,8 +110,40 @@ export default function DocxPreview({ file }: { file: UploadedFile }) {
     }
 
     return (
-        <div className="bg-white p-10 shadow-xl border-2 border-gray-200 rounded-2xl min-h-[600px] prose prose-lg max-w-none hover:shadow-2xl transition-shadow duration-300">
-            <div dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="relative bg-ink-100 p-4 sm:p-8 rounded-2xl border flex flex-col items-center overflow-auto min-h-[600px] max-h-[800px]">
+            {/* Hover Toolbar */}
+            <div className="sticky top-0 z-20 w-full max-w-5xl flex justify-end gap-2 mb-4">
+                <button
+                    onClick={handlePrint}
+                    className="flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur-sm border border-ink-200 rounded-lg text-ink-600 font-medium text-sm hover:text-brand-600 hover:bg-brand-50 hover:border-brand-200 transition-all shadow-sm"
+                    title="Print Document"
+                >
+                    <Printer className="w-4 h-4" /> Print
+                </button>
+                {absoluteUrl && (
+                    <a
+                        href={absoluteUrl}
+                        download={`edited_${file.filename}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-brand-600 text-white border border-transparent rounded-lg font-medium text-sm hover:bg-brand-700 transition-all shadow-sm hover:shadow"
+                        title="Download Document"
+                    >
+                        <FileDown className="w-4 h-4" /> Download
+                    </a>
+                )}
+            </div>
+
+            {loading && (
+                <div className="absolute inset-0 bg-white/80 z-10 flex flex-col justify-center items-center rounded-2xl">
+                    <Loader2 className="h-12 w-12 animate-spin text-brand-500 mb-4" />
+                    <p className="text-brand-600 font-medium">Loading document preview...</p>
+                </div>
+            )}
+
+            <div ref={containerRef} className="w-full max-w-5xl bg-transparent">
+                {/* docx-preview will render the pages here */}
+            </div>
         </div>
     );
 }

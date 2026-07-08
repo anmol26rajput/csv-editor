@@ -16,7 +16,7 @@ interface DocxImage {
     filename: string;
 }
 
-export default function DocxImageManager({ file }: { file: UploadedFile }) {
+export default function DocxImageManager({ file, onUpdate }: { file: UploadedFile, onUpdate?: (newFile: UploadedFile) => void }) {
     const [images, setImages] = useState<DocxImage[]>([]);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -57,7 +57,11 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
             const response = await api.post('/api/v1/tools/docx/images/add/', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setResult(response.data);
+            if (onUpdate) {
+                onUpdate(response.data);
+            } else {
+                setResult(response.data);
+            }
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to add image');
         } finally {
@@ -81,7 +85,11 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
             const response = await api.post('/api/v1/tools/docx/images/replace/', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setResult(response.data);
+            if (onUpdate) {
+                onUpdate(response.data);
+            } else {
+                setResult(response.data);
+            }
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to replace image');
         } finally {
@@ -100,7 +108,11 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
                 file_id: file.id,
                 image_id: imageId
             });
-            setResult(response.data);
+            if (onUpdate) {
+                onUpdate(response.data);
+            } else {
+                setResult(response.data);
+            }
         } catch (err: any) {
             setError(err.response?.data?.error || 'Failed to remove image');
         } finally {
@@ -110,7 +122,7 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
 
     if (result) {
         return (
-            <div className="text-center py-10 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 shadow-lg">
+            <div className="text-center py-10 bg-gradient-to-br from-blue-50 to-brand-50 rounded-2xl border-2 border-blue-200 shadow-lg">
                 <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-blue-500 rounded-full">
                     <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -119,15 +131,15 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
                 <h3 className="text-2xl font-bold text-blue-800 mb-2">Images Updated!</h3>
                 <p className="text-sm text-blue-600 mb-6">Your document has been updated successfully</p>
                 <Button
-                    onClick={() => window.open(result.file, '_blank')}
-                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={() => window.open(result.url, '_blank')}
+                    className="bg-gradient-to-r from-blue-600 to-brand-600 hover:from-blue-700 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                     <Download className="mr-2 h-4 w-4" /> Download Updated DOCX
                 </Button>
                 <div className="mt-6">
                     <button
                         onClick={() => setResult(null)}
-                        className="text-sm text-gray-600 hover:text-gray-900 font-medium hover:underline transition-colors"
+                        className="text-sm text-ink-600 hover:text-ink-900 font-medium hover:underline transition-colors"
                     >
                         Make More Changes
                     </button>
@@ -138,19 +150,19 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                    <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full"></div>
-                    <h3 className="text-lg font-bold text-gray-900">Manage Images</h3>
+                    <div className="w-1 h-5 bg-brand-500 rounded-full"></div>
+                    <h3 className="text-[17px] font-bold text-slate-900">Manage Images</h3>
                 </div>
                 <Button
                     variant="outline"
                     size="sm"
                     onClick={loadImages}
                     disabled={loading}
-                    className="border-2 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-all duration-300"
+                    className="border border-brand-500 text-brand-600 bg-white hover:bg-brand-50 font-semibold px-4 py-2 rounded-lg transition-all h-9"
                 >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`mr-1.5 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     Refresh
                 </Button>
             </div>
@@ -162,8 +174,8 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
             )}
 
             {/* Add Image Section */}
-            <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-dashed border-blue-300 hover:border-blue-400 transition-all duration-300">
-                <label className="cursor-pointer block">
+            <div className="p-8 bg-[#f8faff] rounded-2xl border border-dashed border-blue-300 hover:border-blue-400 transition-all duration-300 mt-4 relative group">
+                <label className="cursor-pointer absolute inset-0 w-full h-full z-10">
                     <input
                         type="file"
                         accept="image/*"
@@ -171,36 +183,36 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
                         className="hidden"
                         disabled={uploading}
                     />
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="p-4 bg-blue-500 rounded-full">
-                            <Upload className="h-8 w-8 text-white" />
-                        </div>
-                        <div className="text-center">
-                            <p className="font-semibold text-gray-900">Add New Image</p>
-                            <p className="text-sm text-gray-600 mt-1">Click to upload or drag and drop</p>
-                        </div>
-                    </div>
                 </label>
+                <div className="flex flex-col items-center justify-center gap-4 pointer-events-none">
+                    <div className="h-12 w-12 bg-[#3b82f6] rounded-full flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-300">
+                        <Upload className="h-5 w-5" />
+                    </div>
+                    <div className="text-center space-y-1">
+                        <p className="font-bold text-slate-900 text-[15px]">Add New Image</p>
+                        <p className="text-[13px] text-ink-500">Click to upload or drag and drop</p>
+                    </div>
+                </div>
             </div>
 
             {/* Images Grid */}
             {loading ? (
                 <div className="flex flex-col justify-center items-center py-16 space-y-4">
                     <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                    <p className="text-gray-500 font-medium">Loading images...</p>
+                    <p className="text-ink-500 font-medium">Loading images...</p>
                 </div>
             ) : images.length === 0 ? (
-                <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
-                    <ImageIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 font-medium">No images found in this document</p>
-                    <p className="text-sm text-gray-500 mt-1">Add images using the upload area above</p>
+                <div className="text-center py-16 bg-ink-50 rounded-2xl border-2 border-dashed border-ink-300">
+                    <ImageIcon className="h-16 w-16 text-ink-400 mx-auto mb-4" />
+                    <p className="text-ink-600 font-medium">No images found in this document</p>
+                    <p className="text-sm text-ink-500 mt-1">Add images using the upload area above</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {images.map((img) => (
                         <div
                             key={img.id}
-                            className="group relative bg-white rounded-xl border-2 border-gray-200 hover:border-blue-300 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
+                            className="group relative bg-white rounded-xl border-2 border-ink-200 hover:border-blue-300 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
                         >
                             <div className="aspect-square relative">
                                 <img
@@ -235,9 +247,9 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
                             </div>
 
                             {/* Image Info */}
-                            <div className="p-3 bg-gray-50 border-t border-gray-200">
-                                <p className="text-xs font-medium text-gray-900 truncate">{img.filename}</p>
-                                <p className="text-xs text-gray-500 mt-1">
+                            <div className="p-3 bg-ink-50 border-t border-ink-200">
+                                <p className="text-xs font-medium text-ink-900 truncate">{img.filename}</p>
+                                <p className="text-xs text-ink-500 mt-1">
                                     {img.width} × {img.height} • {(img.size / 1024).toFixed(1)} KB
                                 </p>
                             </div>
@@ -255,9 +267,9 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
                     <div className="max-w-4xl max-h-[90vh] relative">
                         <button
                             onClick={() => setSelectedImage(null)}
-                            className="absolute -top-12 right-0 p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                            className="absolute -top-12 right-0 p-2 bg-white rounded-full hover:bg-ink-100 transition-colors"
                         >
-                            <X className="h-6 w-6 text-gray-900" />
+                            <X className="h-6 w-6 text-ink-900" />
                         </button>
                         <img
                             src={selectedImage.data}
@@ -273,7 +285,7 @@ export default function DocxImageManager({ file }: { file: UploadedFile }) {
                 <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center">
                     <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4">
                         <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
-                        <p className="text-gray-900 font-semibold">Processing...</p>
+                        <p className="text-ink-900 font-semibold">Processing...</p>
                     </div>
                 </div>
             )}

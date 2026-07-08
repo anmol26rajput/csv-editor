@@ -32,7 +32,7 @@ class DocumentUploadView(generics.CreateAPIView):
                     file_size=file_size
                 )
                 
-                return Response(DocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
+                return Response(DocumentSerializer(doc, context={'request': request}).data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             import traceback

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import api from '@/lib/api';
-import { Scissors, Download, FileText, Layout, Split, Printer } from 'lucide-react';
+import api, { resolveFileUrl } from '@/lib/api';
+import { Scissors, Download, FileText, Layout, Split } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from './FileUploader';
@@ -84,34 +84,8 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                 formData.append('file_id', uploadedFile.id);
             }
 
-            formData.append('mode', mode);
-
-            if (mode === 'at_page') {
-                formData.append('mode', 'extract');
-                formData.append('selected_pages', String(splitPage));
-            } else if (mode === 'extract') {
-                formData.append('mode', mode);
-                formData.append('selected_pages', selectedPages.join(','));
-            }
-
-            const response = await api.post('/api/v1/tools/pdf/split/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-
-            // Backend always returns a single PDF now
-            const data = response.data;
-            let resultFilenameSuffix = '_extracted.pdf';
-            if (mode === 'all') resultFilenameSuffix = '_split_all.zip';
-            const originalFilename = rawFile ? rawFile.name : (uploadedFile ? uploadedFile.filename : 'document.pdf');
-
-            const resultFile: UploadedFile = {
-                id: data.id,
-                filename: originalFilename.replace('.pdf', resultFilenameSuffix),
-                file: data.url,
-                file_type: mode === 'all' ? 'zip' : 'pdf',
-                size_bytes: 0,
-            };
-            setResults([resultFile]);
+            const response = await api.post('/api/v1/tools/pdf/split/', payload);
+            setResults(Array.isArray(response.data) ? response.data : [response.data]);
         } catch (error) {
             console.error("Split error", error);
             alert("Split failed");
@@ -131,18 +105,16 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                         <FileUploader onFileSelect={handleFileSelect} accept=".pdf" label="Upload PDF to Split" />
                     ) : (
                         <div className="space-y-6">
-                            <div className="p-4 border border-indigo-100 bg-indigo-50 rounded-lg">
+                            <div className="p-4 border border-brand-100 bg-brand-50 rounded-lg">
                                 <div className="flex items-center gap-3 mb-2">
                                     <div className="bg-white p-2 rounded-lg shadow-sm">
-                                        <FileText className="h-6 w-6 text-indigo-600" />
+                                        <FileText className="h-6 w-6 text-brand-600" />
                                     </div>
                                     <div className="overflow-hidden">
-                                        <p className="font-medium text-gray-900 truncate">
-                                            {rawFile ? rawFile.name : uploadedFile?.filename}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {rawFile ? (rawFile.size / 1024).toFixed(1) : (uploadedFile ? (uploadedFile.size_bytes / 1024).toFixed(1) : 0)} KB
-                                            {totalPages > 0 && totalPages !== 100 && ` • ${totalPages} pages`}
+                                        <p className="font-medium text-ink-900 truncate">{file.filename}</p>
+                                        <p className="text-xs text-ink-500">
+                                            {(file.size_bytes / 1024).toFixed(1)} KB
+                                            {totalPages > 0 && ` • ${totalPages} pages`}
                                         </p>
                                     </div>
                                 </div>
@@ -156,28 +128,28 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                 <div className="grid grid-cols-1 gap-3">
                                     {/* Handle 'all' mode */}
                                     <div
-                                        className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'all' ? 'border-primary bg-accent/10 border-indigo-600 bg-indigo-50' : 'border-muted bg-popover hover:bg-gray-50'}`}
+                                        className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'all' ? 'border-primary bg-accent/10 border-brand-600 bg-brand-50' : 'border-muted bg-popover hover:bg-ink-50'}`}
                                         onClick={() => setMode('all')}
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Layout className={`h-4 w-4 ${mode === 'all' ? 'text-indigo-600' : 'text-gray-500'}`} />
+                                            <Layout className={`h-4 w-4 ${mode === 'all' ? 'text-brand-600' : 'text-ink-500'}`} />
                                             <div className="font-medium">Split All Pages</div>
                                         </div>
-                                        <div className={`w-4 h-4 rounded-full border ${mode === 'all' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                                        <div className={`w-4 h-4 rounded-full border ${mode === 'all' ? 'border-brand-600 bg-brand-600' : 'border-ink-300'}`}>
                                             {mode === 'all' && <div className="w-2 h-2 bg-white rounded-full m-auto mt-0.5" />}
                                         </div>
                                     </div>
 
                                     {/* Handle 'at_page' mode */}
                                     <div
-                                        className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'at_page' ? 'border-primary bg-accent/10 border-indigo-600 bg-indigo-50' : 'border-muted bg-popover hover:bg-gray-50'}`}
+                                        className={`flex items-center justify-between rounded-md border-2 p-4 cursor-pointer transition-colors ${mode === 'at_page' ? 'border-primary bg-accent/10 border-brand-600 bg-brand-50' : 'border-muted bg-popover hover:bg-ink-50'}`}
                                         onClick={() => setMode('at_page')}
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Split className={`h-4 w-4 ${mode === 'at_page' ? 'text-indigo-600' : 'text-gray-500'}`} />
-                                            <div className="font-medium">Extract Single Page</div>
+                                            <Split className={`h-4 w-4 ${mode === 'at_page' ? 'text-brand-600' : 'text-ink-500'}`} />
+                                            <div className="font-medium">Split at Page</div>
                                         </div>
-                                        <div className={`w-4 h-4 rounded-full border ${mode === 'at_page' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-300'}`}>
+                                        <div className={`w-4 h-4 rounded-full border ${mode === 'at_page' ? 'border-brand-600 bg-brand-600' : 'border-ink-300'}`}>
                                             {mode === 'at_page' && <div className="w-2 h-2 bg-white rounded-full m-auto mt-0.5" />}
                                         </div>
                                     </div>
@@ -198,7 +170,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
 
                                 {mode === 'at_page' && (
                                     <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2">
-                                        <label htmlFor="page-num" className="block text-sm font-medium text-gray-700">Page number to extract:</label>
+                                        <label htmlFor="page-num" className="block text-sm font-medium text-ink-700">Split after page:</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 id="page-num"
@@ -219,8 +191,8 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                                 }}
                                                 className="flex h-10 w-24 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             />
-                                            <span className="text-sm text-gray-500">
-                                                (Extracts only page {splitPage})
+                                            <span className="text-sm text-ink-500">
+                                                (Creates: Pages 1-{splitPage || '?'} & Pages {(parseInt(splitPage) || 0) + 1}-{totalPages})
                                             </span>
                                         </div>
                                     </div>
@@ -288,58 +260,21 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col p-4">
                     {results.length === 0 ? (
-                        <div className="h-full flex items-center justify-center text-gray-400 text-sm min-h-[200px]">
+                        <div className="h-full flex items-center justify-center text-ink-400 text-sm min-h-[200px]">
                             {processing ? "Splitting document..." : "Resulting pages will appear here"}
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col space-y-3 min-h-[500px]">
-                            {results.map((resFile, idx) => {
-                                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://csv-editorbackend.onrender.com/api/v1';
-                                const backendUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
-                                const baseUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
-                                const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${baseUrl}${resFile.file}`;
-
-                                return (
-                                    <div key={resFile.id} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden relative" style={{ height: resFile.filename.endsWith('.zip') ? 'auto' : '500px' }}>
-                                        <div className="p-3 bg-gray-50 border-b border-gray-200">
-                                            <span className="text-sm font-medium text-gray-700 truncate block w-full" title={resFile.filename}>
-                                                {resFile.filename}
-                                            </span>
-                                        </div>
-                                        {resFile.filename.endsWith('.zip') ? (
-                                            <div className="flex-1 bg-white p-8 flex flex-col items-center justify-center min-h-[300px]">
-                                                <div className="bg-indigo-50 p-4 rounded-full mb-4">
-                                                    <Layout className="h-10 w-10 text-indigo-600" />
-                                                </div>
-                                                <h3 className="text-lg font-medium text-gray-900 mb-2">ZIP Archive Ready</h3>
-                                                <p className="text-sm text-gray-500 mb-6 text-center max-w-sm">
-                                                    Your PDF has been successfully split into individual pages and packaged into a ZIP archive.
-                                                </p>
-                                                <Button onClick={() => {
-                                                    const link = document.createElement('a');
-                                                    link.href = fileUrl;
-                                                    link.download = resFile.filename;
-                                                    document.body.appendChild(link);
-                                                    link.click();
-                                                    document.body.removeChild(link);
-                                                }}>
-                                                    Download ZIP
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <div className="flex-1 bg-gray-100">
-                                                <iframe
-                                                    id={`pdf-iframe-${resFile.id}`}
-                                                    src={fileUrl}
-                                                    className="w-full h-full border-0 absolute bottom-0 right-0 left-0"
-                                                    style={{ height: 'calc(100% - 57px)' }}
-                                                    title="PDF Preview"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                            {results.map((resFile, idx) => (
+                                <div key={resFile.id} className="flex items-center justify-between p-3 bg-white border border-ink-100 rounded-lg hover:shadow-md transition-shadow">
+                                    <span className="text-sm font-medium text-ink-700">
+                                        {mode === 'all' ? ("Page " + (idx + 1)) : ("Part " + (idx + 1))}
+                                    </span>
+                                    <Button size="sm" variant="ghost" className="h-8" onClick={() => window.open(resolveFileUrl(resFile.url), '_blank')}>
+                                        <Download className="h-4 w-4 mr-1" /> Save
+                                    </Button>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </CardContent>

@@ -14,6 +14,16 @@ const getBaseUrl = () => {
     return url;
 };
 
+// Resolve file URLs returned by the backend: relative paths like /media/...
+// must point at the backend origin, not the Next.js dev server
+export const resolveFileUrl = (url: string) => {
+    if (!url) return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+    return getBaseUrl() + (url.startsWith('/') ? url : `/${url}`);
+};
+
 const api = axios.create({
     baseURL: getBaseUrl(),
     headers: {

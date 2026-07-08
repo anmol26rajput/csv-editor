@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import api from '@/lib/api';
+import api, { resolveFileUrl } from '@/lib/api';
 import { Merge, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -54,14 +54,14 @@ export default function PDFMerge({ initialFiles }: PDFMergeProps) {
                         <Download className="h-8 w-8" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900">Merge Complete!</h3>
-                        <p className="text-gray-500">Your PDF is ready for download.</p>
+                        <h3 className="text-xl font-bold text-ink-900">Merge Complete!</h3>
+                        <p className="text-ink-500">Your PDF is ready for download.</p>
                     </div>
                     <div className="flex gap-4">
                         <Button variant="outline" onClick={() => { setResult(null); setFiles([]); }}>
                             Merge More
                         </Button>
-                        <Button onClick={() => window.open(result.file, '_blank')}>
+                        <Button onClick={() => window.open(resolveFileUrl(result.url), '_blank')}>
                             Download PDF
                         </Button>
                     </div>
@@ -78,7 +78,7 @@ export default function PDFMerge({ initialFiles }: PDFMergeProps) {
                 </CardHeader>
                 <CardContent>
                     <FileUploader onUploadComplete={handleUpload} accept=".pdf" label="Upload PDF" />
-                    <div className="mt-4 text-xs text-gray-400 text-center">
+                    <div className="mt-4 text-xs text-ink-400 text-center">
                         Upload at least 2 files
                     </div>
                 </CardContent>
@@ -88,13 +88,13 @@ export default function PDFMerge({ initialFiles }: PDFMergeProps) {
                 <CardHeader>
                     <CardTitle className="text-lg flex justify-between items-center">
                         <span>Selected Files</span>
-                        <span className="text-sm font-normal text-gray-500">{files.length} files</span>
+                        <span className="text-sm font-normal text-ink-500">{files.length} files</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col">
                     <div className="flex-1 overflow-y-auto min-h-[200px]">
                         {files.length === 0 ? (
-                            <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                            <div className="h-full flex items-center justify-center text-ink-400 text-sm">
                                 No files selected
                             </div>
                         ) : (
@@ -102,7 +102,7 @@ export default function PDFMerge({ initialFiles }: PDFMergeProps) {
                         )}
                     </div>
 
-                    <div className="pt-6 mt-4 border-t border-gray-100">
+                    <div className="pt-6 mt-4 border-t border-ink-100">
                         <Button
                             className="w-full"
                             size="lg"

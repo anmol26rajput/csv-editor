@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import api from '@/lib/api';
+import api, { resolveFileUrl } from '@/lib/api';
 import { GripVertical, Download, RotateCcw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import FileUploader, { UploadedFile } from './FileUploader';
+import { loadPdfDocument, renderPageThumbnail } from '@/lib/pdfPreview';
 
 interface Page {
     index: number;
@@ -24,6 +25,7 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<{ id: string; url: string } | null>(null);
     const [error, setError] = useState('');
+    const [thumbnails, setThumbnails] = useState<Record<number, string>>({});
 
     useEffect(() => {
         if (initialFile) {
@@ -44,41 +46,45 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
     };
 
     const loadPDFInfo = async (uploadedFile: UploadedFile) => {
-        try {
-            setLoading(true);
-            setError('');
+        setLoading(true);
+        setError('');
+        setThumbnails({});
 
-            // Try to fetch actual page information from backend
+        const setPageCount = (count: number) => {
+            setTotalPages(count);
+            setPages(Array.from({ length: count }, (_, i) => ({
+                index: i,
+                originalIndex: i
+            })));
+        };
+
+        try {
+            const doc = await loadPdfDocument(resolveFileUrl(uploadedFile.url));
+            setPageCount(doc.numPages);
+            setLoading(false);
+
+            for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber++) {
+                try {
+                    const dataUrl = await renderPageThumbnail(doc, pageNumber);
+                    setThumbnails(prev => ({ ...prev, [pageNumber - 1]: dataUrl }));
+                } catch (renderError) {
+                    console.warn(`Failed to render page ${pageNumber}:`, renderError);
+                }
+            }
+            doc.loadingTask.destroy();
+        } catch (pdfError) {
+            console.warn('Client-side PDF preview failed, falling back to page count API:', pdfError);
+
             try {
                 const response = await api.get(`/api/v1/tools/pdf/pages/${uploadedFile.id}/`);
-                const pageData = response.data;
-
-                setTotalPages(pageData.total_pages);
-
-                const initialPages: Page[] = pageData.pages.map((page: any) => ({
-                    index: page.index,
-                    originalIndex: page.index
-                }));
-                setPages(initialPages);
+                setPageCount(response.data.total_pages);
             } catch (apiError) {
-                console.warn('API call failed, using fallback:', apiError);
-
-                // Fallback: Create pages based on default count
-                const defaultPageCount = 5;
-                const fallbackPages: Page[] = Array.from({ length: defaultPageCount }, (_, i) => ({
-                    index: i,
-                    originalIndex: i
-                }));
-
-                setTotalPages(defaultPageCount);
-                setPages(fallbackPages);
-                setError('Could not load exact page count. Showing preview with default pages.');
+                console.error('Failed to load PDF information:', apiError);
+                setPageCount(0);
+                setError('Failed to load PDF information');
+            } finally {
+                setLoading(false);
             }
-        } catch (err) {
-            console.error('Failed to load PDF information:', err);
-            setError('Failed to load PDF information');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -108,9 +114,10 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
     };
 
     const handleReset = () => {
-        if (file) {
-            loadPDFInfo(file);
-        }
+        setPages(Array.from({ length: totalPages }, (_, i) => ({
+            index: i,
+            originalIndex: i
+        })));
     };
 
     const handleReorder = async () => {
@@ -149,32 +156,32 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
     if (loading) {
         return (
             <div className="flex flex-col justify-center items-center py-16 space-y-4">
-                <Loader2 className="h-12 w-12 animate-spin text-purple-500" />
-                <p className="text-gray-500 font-medium">Loading page information...</p>
+                <Loader2 className="h-12 w-12 animate-spin text-brand-500" />
+                <p className="text-ink-500 font-medium">Loading page information...</p>
             </div>
         );
     }
 
     if (result) {
         return (
-            <div className="text-center py-10 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 shadow-lg">
-                <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-purple-500 rounded-full">
+            <div className="text-center py-10 bg-gradient-to-br from-brand-50 to-brand-50 rounded-2xl border-2 border-brand-200 shadow-lg">
+                <div className="mb-4 inline-flex items-center justify-center w-16 h-16 bg-brand-500 rounded-full">
                     <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-purple-800 mb-2">Pages Reordered!</h3>
-                <p className="text-sm text-purple-600 mb-6">Your PDF has been reordered successfully</p>
+                <h3 className="text-2xl font-bold text-brand-800 mb-2">Pages Reordered!</h3>
+                <p className="text-sm text-brand-600 mb-6">Your PDF has been reordered successfully</p>
                 <Button
-                    onClick={() => window.open(result.url, '_blank')}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={() => window.open(resolveFileUrl(result.url), '_blank')}
+                    className="bg-gradient-to-r from-brand-600 to-brand-600 hover:from-brand-700 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                     <Download className="mr-2 h-4 w-4" /> Download Reordered PDF
                 </Button>
                 <div className="mt-6">
                     <button
                         onClick={() => { setResult(null); setFile(null); }}
-                        className="text-sm text-gray-600 hover:text-gray-900 font-medium hover:underline transition-colors"
+                        className="text-sm text-ink-600 hover:text-ink-900 font-medium hover:underline transition-colors"
                     >
                         Reorder Another File
                     </button>
@@ -187,15 +194,15 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-                    <h3 className="text-lg font-bold text-gray-900">Reorder Pages</h3>
+                    <div className="w-1 h-6 bg-gradient-to-b from-brand-500 to-brand-500 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-ink-900">Reorder Pages</h3>
                 </div>
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={handleReset}
-                        className="border-2 border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300 transition-all duration-300"
+                        className="border-2 border-brand-200 text-brand-600 hover:bg-brand-50 hover:border-brand-300 transition-all duration-300"
                     >
                         <RotateCcw className="mr-2 h-4 w-4" />
                         Reset Order
@@ -204,7 +211,7 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => setFile(null)}
-                        className="border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all duration-300"
+                        className="border-2 border-ink-200 text-ink-600 hover:bg-ink-50 transition-all duration-300"
                     >
                         Change File
                     </Button>
@@ -217,8 +224,8 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
                 </div>
             )}
 
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl border-2 border-purple-200">
-                <p className="text-sm text-gray-700 mb-4">
+            <div className="bg-gradient-to-br from-brand-50 to-brand-50 p-6 rounded-2xl border-2 border-brand-200">
+                <p className="text-sm text-ink-700 mb-4">
                     <strong>Drag and drop</strong> to reorder pages
                 </p>
 
@@ -237,41 +244,50 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
                         >
                             <div className={`
                                 bg-white rounded-lg border-2 overflow-hidden shadow-sm
-                                ${draggedIndex === index ? 'border-purple-500 shadow-lg' : 'border-gray-200 hover:border-purple-300'}
+                                ${draggedIndex === index ? 'border-brand-500 shadow-lg' : 'border-ink-200 hover:border-brand-300'}
                                 transition-all duration-200
                             `}>
                                 <div className="absolute top-2 left-2 z-10">
-                                    <div className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md">
+                                    <div className="bg-brand-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md">
                                         {index + 1}
                                     </div>
                                 </div>
 
                                 <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <div className="bg-white/90 p-1 rounded shadow">
-                                        <GripVertical className="h-4 w-4 text-gray-600" />
+                                        <GripVertical className="h-4 w-4 text-ink-600" />
                                     </div>
                                 </div>
 
-                                <div className="aspect-[8.5/11] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center relative">
-                                    <div className="text-center p-4">
-                                        <div className="text-4xl font-bold text-gray-300 mb-2">
-                                            {index + 1}
+                                <div className="aspect-[8.5/11] bg-gradient-to-br from-ink-50 to-ink-100 flex items-center justify-center relative">
+                                    {thumbnails[page.originalIndex] ? (
+                                        <img
+                                            src={thumbnails[page.originalIndex]}
+                                            alt={`Page ${page.originalIndex + 1}`}
+                                            draggable={false}
+                                            className="w-full h-full object-contain bg-white pointer-events-none"
+                                        />
+                                    ) : (
+                                        <div className="text-center p-4">
+                                            <div className="text-4xl font-bold text-ink-300 mb-2">
+                                                {page.originalIndex + 1}
+                                            </div>
+                                            <div className="text-xs text-ink-400">
+                                                Page {page.originalIndex + 1}
+                                            </div>
                                         </div>
-                                        <div className="text-xs text-gray-400">
-                                            Page {index + 1}
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                <div className="px-3 py-2 bg-gray-50 border-t border-gray-200">
-                                    <p className="text-xs text-gray-600 text-center truncate">
+                                <div className="px-3 py-2 bg-ink-50 border-t border-ink-200">
+                                    <p className="text-xs text-ink-600 text-center truncate">
                                         {page.originalIndex !== index && (
-                                            <span className="text-purple-600 font-medium">
+                                            <span className="text-brand-600 font-medium">
                                                 Was page {page.originalIndex + 1}
                                             </span>
                                         )}
                                         {page.originalIndex === index && (
-                                            <span className="text-gray-500">
+                                            <span className="text-ink-500">
                                                 Original position
                                             </span>
                                         )}
@@ -283,12 +299,12 @@ export default function PDFReorder({ initialFile }: PDFReorderProps) {
                 </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-gray-200">
+            <div className="flex justify-end pt-4 border-t border-ink-200">
                 <Button
                     onClick={handleReorder}
                     isLoading={processing}
                     disabled={processing || totalPages <= 1}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-gradient-to-r from-brand-600 to-brand-600 hover:from-brand-700 hover:to-brand-700 shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                     {processing ? (
                         <>

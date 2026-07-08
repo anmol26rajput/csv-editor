@@ -1,7 +1,5 @@
 import os
 import shutil
-import zipfile
-import uuid
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,8 +7,13 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.core.files import File
 from apps.documents.models import Document
+from apps.documents.serializers import DocumentSerializer
 from .services import PDFService
-from .serializers import PDFMergeSerializer, PDFSplitSerializer, PDFReorderSerializer
+from .converters import convert_pdf, convert_to_pdf, TO_PDF_SOURCE_EXTS
+from .serializers import (
+    PDFMergeSerializer, PDFSplitSerializer, PDFReorderSerializer,
+    PDFConvertSerializer, PDFToPDFSerializer,
+)
 from drf_spectacular.utils import extend_schema
 
 class PDFMergeView(APIView):
@@ -52,11 +55,11 @@ class PDFMergeView(APIView):
                 # Cleanup temp
                 if os.path.exists(output_path):
                     os.remove(output_path)
-                    
-                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
+
+                return Response({'id': new_doc.id, 'url': request.build_absolute_uri(new_doc.file.url)}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PDFSplitView(APIView):
@@ -125,41 +128,46 @@ class PDFSplitView(APIView):
                     raise ValueError("page_number is required for at_page mode")
                 output_files = service.split_pdf(source_path, temp_dir, mode=mode, page_number=int(page_number))
             
-            if mode == 'all':
-                # Zip all output files
-                zip_filename = f"{os.path.splitext(source_filename)[0]}_split_all.zip"
-                zip_path = os.path.join(temp_dir, zip_filename)
-                with zipfile.ZipFile(zip_path, 'w') as zipf:
-                    for f in output_files:
-                        zipf.write(f, os.path.basename(f))
-                result_path = zip_path
-                result_filename = zip_filename
-                file_type = 'zip'
-            else:
-                result_path = output_files[0]
-                result_filename = os.path.basename(result_path)
-                file_type = 'pdf'
+            service = PDFService()
+            temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp', str(doc.id))
+            os.makedirs(temp_dir, exist_ok=True)
             
-            new_doc = Document.objects.create(
-                filename=result_filename,
-                file_type=file_type,
-                processing_status='completed'
-            )
-            with open(result_path, 'rb') as f:
-                new_doc.file.save(result_filename, File(f))
-            
-            if temp_input_dir and os.path.exists(temp_input_dir):
-                shutil.rmtree(temp_input_dir)
-            shutil.rmtree(temp_dir)
-            
-            return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
+            try:
+                mode = serializer.validated_data.get('mode', 'all')
+                page_number = serializer.validated_data.get('page_number')
+                output_files = service.split_pdf(doc.file.path, temp_dir, mode=mode, page_number=page_number)
+
+                # Save each split output as its own Document
+                new_docs = []
+                for output_file in output_files:
+                    filename = os.path.basename(output_file)
+                    new_doc = Document.objects.create(
+                        filename=filename,
+                        file_type='pdf',
+                        file_size=os.path.getsize(output_file),
+                        processing_status='completed'
+                    )
+                    with open(output_file, 'rb') as f:
+                        new_doc.file.save(filename, File(f))
+                    new_docs.append(new_doc)
 
         except Exception as e:
             if temp_input_dir and os.path.exists(temp_input_dir):
                 shutil.rmtree(temp_input_dir)
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+                return Response(
+                    DocumentSerializer(new_docs, many=True, context={'request': request}).data,
+                    status=status.HTTP_201_CREATED
+                )
+
+            except Exception as e:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir)
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PDFReorderView(APIView):
     @extend_schema(request=PDFReorderSerializer)
@@ -196,14 +204,105 @@ class PDFReorderView(APIView):
                 # Cleanup temp
                 if os.path.exists(output_path):
                     os.remove(output_path)
-                    
-                return Response({'id': new_doc.id, 'url': new_doc.file.url}, status=status.HTTP_201_CREATED)
+
+                return Response({'id': new_doc.id, 'url': request.build_absolute_uri(new_doc.file.url)}, status=status.HTTP_201_CREATED)
             except ValueError as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PDFConvertView(APIView):
+    @extend_schema(request=PDFConvertSerializer)
+    def post(self, request):
+        serializer = PDFConvertSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        file_id = serializer.validated_data['file_id']
+        target_format = serializer.validated_data['target_format']
+
+        doc = get_object_or_404(Document, pk=file_id)
+        if doc.file_type != 'pdf':
+            return Response({'error': 'File must be a PDF'}, status=status.HTTP_400_BAD_REQUEST)
+
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp', f"convert_{doc.id}")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        try:
+            output_path, file_type = convert_pdf(doc.file.path, temp_dir, target_format)
+            output_filename = os.path.basename(output_path)
+
+            new_doc = Document.objects.create(
+                filename=output_filename,
+                file_type=file_type,
+                file_size=os.path.getsize(output_path),
+                processing_status='completed'
+            )
+            with open(output_path, 'rb') as f:
+                new_doc.file.save(output_filename, File(f))
+
+            return Response({
+                'id': new_doc.id,
+                'url': request.build_absolute_uri(new_doc.file.url),
+                'filename': output_filename,
+                'file_type': file_type,
+            }, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
+class PDFToPDFView(APIView):
+    """Convert an uploaded non-PDF document or image into a PDF."""
+    @extend_schema(request=PDFToPDFSerializer)
+    def post(self, request):
+        serializer = PDFToPDFSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        doc = get_object_or_404(Document, pk=serializer.validated_data['file_id'])
+        if doc.file_type == 'pdf':
+            return Response({'error': 'File is already a PDF'}, status=status.HTTP_400_BAD_REQUEST)
+        if doc.file_type not in TO_PDF_SOURCE_EXTS:
+            return Response(
+                {'error': f"Cannot convert '.{doc.file_type}' files to PDF"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp', f"topdf_{doc.id}")
+        os.makedirs(temp_dir, exist_ok=True)
+
+        try:
+            output_path = convert_to_pdf(doc.file.path, temp_dir)
+            output_filename = os.path.basename(output_path)
+
+            new_doc = Document.objects.create(
+                filename=output_filename,
+                file_type='pdf',
+                file_size=os.path.getsize(output_path),
+                processing_status='completed'
+            )
+            with open(output_path, 'rb') as f:
+                new_doc.file.save(output_filename, File(f))
+
+            return Response({
+                'id': new_doc.id,
+                'url': request.build_absolute_uri(new_doc.file.url),
+                'filename': output_filename,
+                'file_type': 'pdf',
+            }, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
 
 class PDFPagesView(APIView):
     """Get page information for a PDF file"""
