@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import NavLinks from '@/components/NavLinks'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-sans' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-    title: 'OmniFile — Edit any file in your browser',
+    title: 'Sarva — Edit any file in your browser',
     description: 'Open, edit, and convert text, CSV, Excel, Word, and PDF files online. Free, fast, and private.',
 }
 
@@ -32,7 +33,7 @@ export default function RootLayout({
                             <span className="grid place-items-center h-7 w-7 rounded-lg bg-ink-950 text-brand-400">
                                 <FileText className="h-4 w-4" strokeWidth={2.25} />
                             </span>
-                            <span>OmniFile</span>
+                            <span>Sarva</span>
                         </Link>
 
                         <NavLinks />
@@ -46,7 +47,7 @@ export default function RootLayout({
 
                 <footer className="relative z-10 border-t border-ink-200/60 py-8">
                     <div className="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-ink-500">
-                        <p>&copy; {new Date().getFullYear()} OmniFile. Files are processed securely and never shared.</p>
+                        <p>&copy; {new Date().getFullYear()} Sarva. Files are processed securely and never shared.</p>
                         <div className="flex items-center gap-5">
                             <Link href="/privacy" className="hover:text-ink-900 transition-colors">Privacy</Link>
                             <Link href="/terms" className="hover:text-ink-900 transition-colors">Terms</Link>

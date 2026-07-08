@@ -13,7 +13,6 @@ interface PDFSplitProps {
 
 export default function PDFSplit({ initialFile }: PDFSplitProps) {
     const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(initialFile || null);
-    const [rawFile, setRawFile] = useState<File | null>(null);
 
     useEffect(() => {
         if (initialFile) {
@@ -37,52 +36,31 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                     }
                 })
                 .catch(err => console.error("Failed to fetch page info", err));
-        } else if (rawFile) {
-            // Read local file page count using pdf.js
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const typedarray = new Uint8Array(e.target?.result as ArrayBuffer);
-                    const pdfjsLib = await import('pdfjs-dist');
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
-                    setTotalPages(pdf.numPages);
-                    if (pdf.numPages > 1) {
-                        setSplitPage(String(Math.floor(pdf.numPages / 2)));
-                    }
-                } catch (err) {
-                    console.error("Failed to read local PDF", err);
-                    setTotalPages(0);
-                }
-            };
-            reader.readAsArrayBuffer(rawFile);
         } else {
             setTotalPages(0);
         }
-    }, [uploadedFile, rawFile]);
+    }, [uploadedFile]);
 
     const [processing, setProcessing] = useState(false);
-    const [results, setResults] = useState<UploadedFile[]>([]);
+    const [results, setResults] = useState<{ id: string; url: string }[]>([]);
 
-    const handleFileSelect = (file: File) => {
-        setRawFile(file);
-        setUploadedFile(null);
+    const handleUpload = (file: UploadedFile) => {
+        setUploadedFile(file);
         setResults([]);
         setMode('all');
         setSelectedPages([]);
     };
 
     const handleSplit = async () => {
-        if (!uploadedFile && !rawFile) return;
+        if (!uploadedFile) return;
         setProcessing(true);
         try {
-            const formData = new FormData();
-
-            if (rawFile) {
-                formData.append('file', rawFile);
-            } else if (uploadedFile) {
-                formData.append('file_id', uploadedFile.id);
-            }
+            const payload: Record<string, unknown> = {
+                file_id: uploadedFile.id,
+                mode,
+            };
+            if (mode === 'at_page') payload.page_number = parseInt(splitPage);
+            if (mode === 'extract') payload.selected_pages = selectedPages.join(',');
 
             const response = await api.post('/api/v1/tools/pdf/split/', payload);
             setResults(Array.isArray(response.data) ? response.data : [response.data]);
@@ -101,8 +79,8 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                     <CardTitle className="text-lg">Select File</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {!uploadedFile && !rawFile ? (
-                        <FileUploader onFileSelect={handleFileSelect} accept=".pdf" label="Upload PDF to Split" />
+                    {!uploadedFile ? (
+                        <FileUploader onUploadComplete={handleUpload} accept=".pdf" label="Upload PDF to Split" />
                     ) : (
                         <div className="space-y-6">
                             <div className="p-4 border border-brand-100 bg-brand-50 rounded-lg">
@@ -111,14 +89,14 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                         <FileText className="h-6 w-6 text-brand-600" />
                                     </div>
                                     <div className="overflow-hidden">
-                                        <p className="font-medium text-ink-900 truncate">{file.filename}</p>
+                                        <p className="font-medium text-ink-900 truncate">{uploadedFile.filename}</p>
                                         <p className="text-xs text-ink-500">
-                                            {(file.size_bytes / 1024).toFixed(1)} KB
+                                            {(uploadedFile.size_bytes / 1024).toFixed(1)} KB
                                             {totalPages > 0 && ` • ${totalPages} pages`}
                                         </p>
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => { setUploadedFile(null); setRawFile(null); setResults([]); }} className="w-full mt-2">
+                                <Button variant="outline" size="sm" onClick={() => { setUploadedFile(null); setResults([]); }} className="w-full mt-2">
                                     Change File
                                 </Button>
                             </div>
@@ -218,7 +196,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                                             flex items-center justify-center h-10 w-10 rounded-md text-sm font-medium transition-all
                                                             ${isSelected
                                                                 ? 'bg-indigo-600 text-white shadow-md scale-105'
-                                                                : 'bg-white text-gray-700 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'}
+                                                                : 'bg-white text-ink-700 border border-ink-200 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700'}
                                                         `}
                                                     >
                                                         {pageNum}
@@ -228,7 +206,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                                         </div>
                                         <div className="flex justify-end gap-2 text-xs">
                                             <button onClick={() => setSelectedPages(Array.from({ length: totalPages }, (_, i) => i + 1))} className="text-indigo-600 hover:underline">Select All</button>
-                                            <button onClick={() => setSelectedPages([])} className="text-gray-500 hover:underline">Clear</button>
+                                            <button onClick={() => setSelectedPages([])} className="text-ink-500 hover:underline">Clear</button>
                                         </div>
                                     </div>
                                 )}
@@ -268,7 +246,7 @@ export default function PDFSplit({ initialFile }: PDFSplitProps) {
                             {results.map((resFile, idx) => (
                                 <div key={resFile.id} className="flex items-center justify-between p-3 bg-white border border-ink-100 rounded-lg hover:shadow-md transition-shadow">
                                     <span className="text-sm font-medium text-ink-700">
-                                        {mode === 'all' ? ("Page " + (idx + 1)) : ("Part " + (idx + 1))}
+                                        {mode === 'all' ? 'All pages (ZIP)' : mode === 'extract' ? 'Extracted pages' : `Part ${idx + 1}`}
                                     </span>
                                     <Button size="sm" variant="ghost" className="h-8" onClick={() => window.open(resolveFileUrl(resFile.url), '_blank')}>
                                         <Download className="h-4 w-4 mr-1" /> Save

@@ -1,8 +1,8 @@
 # 📊 The Friendly CSV Editor
-# OmniFile 🚀
+# Sarva 🚀
 > **Upload. Edit. Download.** Simple as that.
 
-**OmniFile** is a modern, privacy-focused, and ultra-fast web tool for editing **CSVs, PDFs, DOCX, and PPTX** files. No ads, no cloud storage, just you and your files.
+**Sarva** is a modern, privacy-focused, and ultra-fast web tool for editing **CSVs, PDFs, DOCX, and PPTX** files. No ads, no cloud storage, just you and your files.
 
 ---
 

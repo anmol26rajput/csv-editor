@@ -40,6 +40,18 @@ class PDFConvertSerializer(serializers.Serializer):
 class PDFToPDFSerializer(serializers.Serializer):
     file_id = serializers.UUIDField()
 
+class PDFTextEditSerializer(serializers.Serializer):
+    file_id = serializers.UUIDField()
+    edits = serializers.ListField(child=serializers.DictField(), allow_empty=False)
+
+    def validate_edits(self, value):
+        for edit in value:
+            if 'page' not in edit or 'bbox' not in edit or 'text' not in edit:
+                raise serializers.ValidationError("Each edit needs 'page', 'bbox' and 'text'")
+            if not isinstance(edit['bbox'], list) or len(edit['bbox']) != 4:
+                raise serializers.ValidationError("'bbox' must be a list of 4 numbers")
+        return value
+
 class PDFReorderSerializer(serializers.Serializer):
     file_id = serializers.UUIDField()
     page_order = serializers.ListField(

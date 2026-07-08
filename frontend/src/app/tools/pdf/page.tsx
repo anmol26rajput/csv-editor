@@ -3,23 +3,27 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Merge, Scissors, ArrowUpDown, Repeat, Loader2 } from 'lucide-react';
+import { Merge, Scissors, ArrowUpDown, Repeat, Trash2, PenLine, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PDFMerge from '@/components/tools/PDFMerge';
 import PDFSplit from '@/components/tools/PDFSplit';
+import PDFRemove from '@/components/tools/PDFRemove';
 import PDFReorder from '@/components/tools/PDFReorder';
 import PDFConvert from '@/components/tools/PDFConvert';
+import PDFTextEditor from '@/components/tools/PDFTextEditor';
 import { UploadedFile } from '@/components/tools/FileUploader';
 
 const tabs = [
     { id: 'convert' as const, label: 'Convert', icon: Repeat },
+    { id: 'edit' as const, label: 'Edit Text', icon: PenLine },
     { id: 'merge' as const, label: 'Merge', icon: Merge },
     { id: 'split' as const, label: 'Split', icon: Scissors },
+    { id: 'remove' as const, label: 'Remove', icon: Trash2 },
     { id: 'reorder' as const, label: 'Reorder', icon: ArrowUpDown },
 ];
 
 function PDFToolsContent() {
-    const [activeTab, setActiveTab] = useState<'convert' | 'merge' | 'split' | 'reorder'>('convert');
+    const [activeTab, setActiveTab] = useState<'convert' | 'edit' | 'merge' | 'split' | 'remove' | 'reorder'>('convert');
     const [initialFile, setInitialFile] = useState<UploadedFile | null>(null);
     const searchParams = useSearchParams();
     const fileId = searchParams.get('id');
@@ -64,6 +68,7 @@ function PDFToolsContent() {
 
             <div className="animate-fade-in">
                 {activeTab === 'convert' && <PDFConvert initialFile={initialFile} />}
+                {activeTab === 'edit' && <PDFTextEditor initialFile={initialFile} />}
                 {activeTab === 'merge' && <PDFMerge initialFiles={initialFile ? [initialFile] : []} />}
                 {activeTab === 'split' && <PDFSplit initialFile={initialFile} />}
                 {activeTab === 'remove' && <PDFRemove initialFile={initialFile} />}
