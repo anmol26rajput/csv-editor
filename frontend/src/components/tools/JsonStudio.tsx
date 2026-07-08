@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 const SAMPLE = JSON.stringify({
-    product: 'OmniFile',
+    product: 'Sarva',
     version: 2.1,
     openSource: true,
     tools: ['csv', 'xlsx', 'docx', 'pdf'],
@@ -277,8 +277,18 @@ function TreeNode({ name, value, depth }: { name: string; value: unknown; depth:
 
 // ---------- Main component ----------
 
+const EDITOR_PLACEHOLDER = `Paste or type JSON here, e.g.
+
+{
+    "name": "My Project",
+    "version": 1.0,
+    "active": true,
+    "tags": ["alpha", "beta"],
+    "owner": { "name": "You", "role": "admin" }
+}`;
+
 export default function JsonStudio() {
-    const [text, setText] = useState(SAMPLE);
+    const [text, setText] = useState('');
     const [viewMode, setViewMode] = useState<'graph' | 'tree'>('graph');
     const [copied, setCopied] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -373,7 +383,7 @@ export default function JsonStudio() {
                             "h-[32rem] w-full resize-y rounded-xl border-2 bg-white p-4 font-mono text-sm text-ink-800 focus:outline-none",
                             parsed.error && text.trim() ? "border-red-300 focus:border-red-400" : "border-ink-200 focus:border-brand-400"
                         )}
-                        placeholder='{"paste": "your JSON here"}'
+                        placeholder={EDITOR_PLACEHOLDER}
                     />
                     {parsed.error && text.trim() && (
                         <div className="flex items-start gap-2 rounded-xl border-2 border-red-200 bg-red-50 p-3">
