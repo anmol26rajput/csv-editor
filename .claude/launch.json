@@ -9,7 +9,7 @@
         },
         {
             "name": "backend",
-            "runtimeExecutable": "./env/bin/python",
+            "runtimeExecutable": "backend/.venv/bin/python",
             "runtimeArgs": ["backend/manage.py", "runserver", "8000"],
             "port": 8000
         }

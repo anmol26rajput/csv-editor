@@ -1,77 +1,91 @@
-# 📊 The Friendly CSV Editor
 # Sarva 🚀
-> **Upload. Edit. Download.** Simple as that.
 
-**Sarva** is a modern, privacy-focused, and ultra-fast web tool for editing **CSVs, PDFs, DOCX, and PPTX** files. No ads, no cloud storage, just you and your files.
+> **Open. Edit. Convert.** Any file, right in your browser.
 
----
-
-### 👋 Why does this exist?
-Let's face it: dealing with massive CSV files is a pain. Excel crashes, online tools sell your data, and writing Python scripts for every little change is exhausting. 
-
-We built this tool because we wanted something **simple, fast, and beautiful** to handle the boring stuff so you can get back to work.
+**Sarva** is a modern, privacy-focused web app for editing **PDF, CSV, Excel (XLSX),
+Word (DOCX), and text** files. No ads, no cloud storage — your files are processed and never sold.
 
 ---
 
-### ✨ What can it do?
+## Architecture
 
-| Feature | What it does for you |
+Sarva is a monorepo with two independently deployable parts:
+
+```
+csv-editor/
+├── frontend/   → Next.js 16 app (deploys to Vercel)
+└── backend/    → Django REST API (deploys to Render + Supabase Postgres)
+```
+
+- **frontend/** — the UI and all in-browser editing (React 19, Tailwind, TipTap, pdf.js).
+- **backend/** — file processing API (Django, pandas, PyMuPDF, python-docx, openpyxl).
+
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for full deploy instructions and the exact
+environment variables each side needs.
+
+---
+
+## Features
+
+| Tool | What it does |
 | :--- | :--- |
-| **✂️ Split Huge Files** | Break a 100,000-row file into manageable chunks by row count or category. |
-| **🔍 Search & Filter** | Find exactly what you need with powerful filters (Dates, Text, Numbers). |
-| **🤖 AI Clean-Up** | Messy data? One click to auto-fix missing values and formatting issues. |
-| **📅 Date Doctor** | Remove rows by specific dates or date ranges effortlessly. |
-| **⚡ Click & Go** | No complex dashboards. Upload -> Act -> Download. Done. |
+| **PDF** | Merge, split, reorder, delete pages, edit text, convert to/from PDF |
+| **CSV** | Inline cell editing, filtering, column removal, splitting, smart clean-up |
+| **Excel (XLSX)** | View and edit spreadsheets, reorder sheets |
+| **Word (DOCX)** | Rich-text editing with live preview and image management |
+| **Text & code** | Edit Markdown, JSON, source, and logs in the browser |
+| **Utilities** | Base64 encode/decode, JSON tools |
 
 ---
 
-### 🚀 Quick Start (3 Steps)
+## Local development
 
-You don't need to be a coding wizard to run this.
+### Prerequisites
+- Node.js 18+
+- Python 3.11+
 
-**1. Clone & Enter**
+### Backend
+
 ```bash
-git clone https://github.com/anmol26rajput/csv-editor.git
-cd csv-editor
-```
-
-**2. Turn on the Engine**
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-# Mac/Linux
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-**3. Blast Off!** 🛸
-```bash
+cp .env.example .env               # then fill in values (a dev SECRET_KEY is fine)
 python manage.py migrate
-python manage.py runserver
+python manage.py runserver 8000
 ```
-👉 Open **http://127.0.0.1:8000** in your browser.
+
+The API runs at `http://127.0.0.1:8000` (settings default to `config.settings.dev`).
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local         # points at http://127.0.0.1:8000 by default
+npm run dev
+```
+
+The app runs at `http://localhost:3000`.
 
 ---
 
-### 📸 A Peek Inside
-*(Screenshots of the beautiful glassmorphism UI go here)*
+## Environment variables
 
-- **Clean Upload Interface**: Just drag and drop.
-- **Smart Result Cards**: Auto-downloads and clear next steps.
-- **Modern Design**: Easy on the eyes with a soft gradient theme.
+Never commit real `.env` files — only the `.env.example` templates are tracked.
 
----
+- `backend/.env.example` — Django + database + CORS config
+- `frontend/.env.example` — API URL + public site URL
 
-### 🛠️ Built With
-- **Django**: For a rock-solid backend.
-- **Pandas**: The heavy lifter for data processing.
-- **Vanilla JS**: Fast, reactive frontend without the bloat.
-- **Love**: Because reliable tools make us happy.
+For production values and which keys go to Vercel vs. the backend host, see
+**[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ---
 
-**Enjoy your clean data!** 🎉
+## Built with
+
+- **Frontend:** Next.js 16, React 19, Tailwind CSS, TipTap, pdf.js
+- **Backend:** Django REST Framework, pandas, PyMuPDF, python-docx, openpyxl
+- **Database:** Supabase (Postgres)
+- **Hosting:** Vercel (frontend) + Render (backend)

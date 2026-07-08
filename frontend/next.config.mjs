@@ -1,13 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    async rewrites() {
-        return [
-            {
-                source: '/api/:path*',
-                destination: 'http://127.0.0.1:8000/api/:path*',
-            },
-        ]
-    },
+    // The frontend talks to the backend directly via the absolute
+    // NEXT_PUBLIC_API_URL (see src/lib/api.ts), so no dev proxy rewrite is
+    // needed. Set NEXT_PUBLIC_API_URL and NEXT_PUBLIC_SITE_URL in your env.
+    reactStrictMode: true,
 };
 
 export default nextConfig;

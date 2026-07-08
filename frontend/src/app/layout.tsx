@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Outfit, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
@@ -6,13 +6,75 @@ import { FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import NavLinks from '@/components/NavLinks'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { SITE_URL, SITE_NAME, SITE_TAGLINE, BASE_KEYWORDS } from '@/lib/seo'
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-sans' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
+const description =
+    'Open, edit, and convert PDF, CSV, Excel (XLSX), Word (DOCX), and text files right in your browser. Free, fast, and private — your files never leave your device.'
+
 export const metadata: Metadata = {
-    title: 'Sarva — Edit any file in your browser',
-    description: 'Open, edit, and convert text, CSV, Excel, Word, and PDF files online. Free, fast, and private.',
+    metadataBase: new URL(SITE_URL),
+    title: {
+        default: `${SITE_NAME} — ${SITE_TAGLINE}`,
+        template: `%s · ${SITE_NAME}`,
+    },
+    description,
+    keywords: BASE_KEYWORDS,
+    applicationName: SITE_NAME,
+    authors: [{ name: SITE_NAME }],
+    alternates: { canonical: '/' },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            'max-image-preview': 'large',
+            'max-snippet': -1,
+            'max-video-preview': -1,
+        },
+    },
+    openGraph: {
+        type: 'website',
+        siteName: SITE_NAME,
+        title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+        description,
+        url: SITE_URL,
+        locale: 'en_US',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+        description,
+    },
+    category: 'technology',
+}
+
+export const viewport: Viewport = {
+    themeColor: '#ffffff',
+    width: 'device-width',
+    initialScale: 1,
+}
+
+// Structured data so search engines can render a rich result for the app.
+const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: SITE_NAME,
+    url: SITE_URL,
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Any (web browser)',
+    description,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    featureList: [
+        'PDF editor and converter',
+        'CSV editor',
+        'Excel (XLSX) viewer and editor',
+        'Word (DOCX) editor',
+        'Online text and code editor',
+    ],
 }
 
 export default function RootLayout({
@@ -23,6 +85,10 @@ export default function RootLayout({
     return (
         <html lang="en" data-scroll-behavior="smooth">
             <body className={cn(outfit.variable, jetbrainsMono.variable, "min-h-screen flex flex-col font-sans text-ink-950 bg-paper grain")}>
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
                 <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-[60] focus:top-2 focus:left-2 focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lift">
                     Skip to content
                 </a>
