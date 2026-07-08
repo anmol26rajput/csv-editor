@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Terms — OmniFile',
+    title: 'Terms — Sarva',
 };
 
 export default function TermsPage() {
@@ -9,7 +9,7 @@ export default function TermsPage() {
         <article className="max-w-2xl mx-auto py-8 space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">Terms of service</h1>
             <p className="text-ink-600 leading-relaxed">
-                OmniFile is provided free of charge, as is, without warranty of any
+                Sarva is provided free of charge, as is, without warranty of any
                 kind. Always keep a backup of important files before editing them.
             </p>
             <p className="text-ink-600 leading-relaxed">

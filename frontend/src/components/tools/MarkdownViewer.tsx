@@ -32,8 +32,23 @@ console.log(greeting);
 
 type Layout = 'split' | 'edit' | 'preview';
 
+const EDITOR_PLACEHOLDER = `Write or paste Markdown here, e.g.
+
+# Heading
+
+Some **bold** and *italic* text.
+
+- List item
+- Another item
+
+> A quote
+
+\`\`\`
+code block
+\`\`\``;
+
 export default function MarkdownViewer() {
-    const [markdown, setMarkdown] = useState(SAMPLE);
+    const [markdown, setMarkdown] = useState('');
     const [layout, setLayout] = useState<Layout>('split');
     const [filename, setFilename] = useState('document.md');
     const [copied, setCopied] = useState(false);
@@ -114,7 +129,7 @@ export default function MarkdownViewer() {
                         onChange={(e) => setMarkdown(e.target.value)}
                         spellCheck={false}
                         className="w-full h-[32rem] resize-y rounded-xl border-2 border-ink-200 bg-white p-4 font-mono text-sm text-ink-800 focus:border-brand-400 focus:outline-none"
-                        placeholder="Write Markdown here..."
+                        placeholder={EDITOR_PLACEHOLDER}
                     />
                 )}
                 {layout !== 'edit' && (

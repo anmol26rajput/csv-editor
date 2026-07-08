@@ -158,7 +158,7 @@ CORS_ALLOW_ALL_ORIGINS = True # For dev, ideally restrict in prod
 
 # Spectre
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'OmniFile API',
-    'DESCRIPTION': 'API for OmniFile File Editor',
+    'TITLE': 'Sarva API',
+    'DESCRIPTION': 'API for Sarva File Editor',
     'VERSION': '1.0.0',
 }

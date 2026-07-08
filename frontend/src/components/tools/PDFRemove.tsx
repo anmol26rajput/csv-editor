@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import api from '@/lib/api';
+import api, { resolveFileUrl } from '@/lib/api';
 import { Scissors, Download, FileText, Layout, Split, Printer, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -13,7 +13,6 @@ interface PDFRemoveProps {
 
 export default function PDFRemove({ initialFile }: PDFRemoveProps) {
     const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(initialFile || null);
-    const [rawFile, setRawFile] = useState<File | null>(null);
 
     useEffect(() => {
         if (initialFile) {
@@ -32,64 +31,36 @@ export default function PDFRemove({ initialFile }: PDFRemoveProps) {
                     setTotalPages(res.data.total_pages);
                 })
                 .catch(err => console.error("Failed to fetch page info", err));
-        } else if (rawFile) {
-            // Read local file page count using pdf.js
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const typedarray = new Uint8Array(e.target?.result as ArrayBuffer);
-                    const pdfjsLib = await import('pdfjs-dist');
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
-                    setTotalPages(pdf.numPages);
-                } catch (err) {
-                    console.error("Failed to read local PDF", err);
-                    setTotalPages(0);
-                }
-            };
-            reader.readAsArrayBuffer(rawFile);
         } else {
             setTotalPages(0);
         }
-    }, [uploadedFile, rawFile]);
+    }, [uploadedFile]);
 
     const [processing, setProcessing] = useState(false);
     const [results, setResults] = useState<UploadedFile[]>([]);
 
-    const handleFileSelect = (file: File) => {
-        setRawFile(file);
-        setUploadedFile(null);
+    const handleUpload = (file: UploadedFile) => {
+        setUploadedFile(file);
         setResults([]);
         setSelectedPages([]);
     };
 
     const handleSplit = async () => {
-        if (!uploadedFile && !rawFile) return;
+        if (!uploadedFile) return;
         setProcessing(true);
         try {
-            const formData = new FormData();
-
-            if (rawFile) {
-                formData.append('file', rawFile);
-            } else if (uploadedFile) {
-                formData.append('file_id', uploadedFile.id);
-            }
-
-            formData.append('mode', 'remove');
-            formData.append('selected_pages', selectedPages.join(','));
-
-            const response = await api.post('/api/v1/tools/pdf/split/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+            const response = await api.post('/api/v1/tools/pdf/split/', {
+                file_id: uploadedFile.id,
+                mode: 'remove',
+                selected_pages: selectedPages.join(','),
             });
 
             // Backend always returns a single PDF now
             const data = response.data;
-            const originalFilename = rawFile ? rawFile.name : (uploadedFile ? uploadedFile.filename : 'document.pdf');
-
             const resultFile: UploadedFile = {
                 id: data.id,
-                filename: originalFilename.replace('.pdf', '_removed.pdf'),
-                file: data.url,
+                filename: uploadedFile.filename.replace('.pdf', '_removed.pdf'),
+                url: data.url,
                 file_type: 'pdf',
                 size_bytes: 0,
             };
@@ -109,8 +80,8 @@ export default function PDFRemove({ initialFile }: PDFRemoveProps) {
                     <CardTitle className="text-lg">Select File</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {!uploadedFile && !rawFile ? (
-                        <FileUploader onFileSelect={handleFileSelect} accept=".pdf" label="Upload PDF to Split" />
+                    {!uploadedFile ? (
+                        <FileUploader onUploadComplete={handleUpload} accept=".pdf" label="Upload PDF to Remove Pages" />
                     ) : (
                         <div className="space-y-6">
                             <div className="p-4 border border-indigo-100 bg-indigo-50 rounded-lg">
@@ -119,16 +90,16 @@ export default function PDFRemove({ initialFile }: PDFRemoveProps) {
                                         <FileText className="h-6 w-6 text-indigo-600" />
                                     </div>
                                     <div className="overflow-hidden">
-                                        <p className="font-medium text-gray-900 truncate">
-                                            {rawFile ? rawFile.name : uploadedFile?.filename}
+                                        <p className="font-medium text-ink-900 truncate">
+                                            {uploadedFile.filename}
                                         </p>
-                                        <p className="text-xs text-gray-500">
-                                            {rawFile ? (rawFile.size / 1024).toFixed(1) : (uploadedFile ? (uploadedFile.size_bytes / 1024).toFixed(1) : 0)} KB
-                                            {totalPages > 0 && totalPages !== 100 && ` • ${totalPages} pages`}
+                                        <p className="text-xs text-indigo-700/70">
+                                            {(uploadedFile.size_bytes / 1024).toFixed(1)} KB
+                                            {totalPages > 0 && ` • ${totalPages} pages`}
                                         </p>
                                     </div>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => { setUploadedFile(null); setRawFile(null); setResults([]); }} className="w-full mt-2">
+                                <Button variant="outline" size="sm" onClick={() => { setUploadedFile(null); setResults([]); }} className="w-full mt-2">
                                     Change File
                                 </Button>
                             </div>
@@ -153,7 +124,7 @@ export default function PDFRemove({ initialFile }: PDFRemoveProps) {
                                                             flex items-center justify-center h-10 w-10 rounded-md text-sm font-medium transition-all
                                                             ${isSelected
                                                             ? 'bg-red-600 text-white shadow-md scale-105'
-                                                            : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:bg-red-50'}
+                                                            : 'bg-white text-ink-700 border border-ink-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700'}
                                                         `}
                                                 >
                                                     {pageNum}
@@ -199,11 +170,8 @@ export default function PDFRemove({ initialFile }: PDFRemoveProps) {
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col space-y-3 min-h-[500px]">
-                            {results.map((resFile, idx) => {
-                                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://csv-editorbackend.onrender.com/api/v1';
-                                const backendUrl = apiUrl.replace(/\/api\/v1\/?$/, '');
-                                const baseUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
-                                const fileUrl = resFile.file.startsWith('http') ? resFile.file : `${baseUrl}${resFile.file}`;
+                            {results.map((resFile) => {
+                                const fileUrl = resolveFileUrl(resFile.url);
 
                                 return (
                                     <div key={resFile.id} className="flex flex-col border border-gray-200 rounded-lg overflow-hidden relative" style={{ height: resFile.filename.endsWith('.zip') ? 'auto' : '500px' }}>

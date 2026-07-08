@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Privacy — OmniFile',
+    title: 'Privacy — Sarva',
 };
 
 export default function PrivacyPage() {
@@ -9,7 +9,7 @@ export default function PrivacyPage() {
         <article className="max-w-2xl mx-auto py-8 space-y-6">
             <h1 className="text-3xl font-bold tracking-tight">Privacy policy</h1>
             <p className="text-ink-600 leading-relaxed">
-                OmniFile is built to keep your data yours. Text files opened in the
+                Sarva is built to keep your data yours. Text files opened in the
                 text editor are processed entirely in your browser and are never
                 uploaded to a server.
             </p>
