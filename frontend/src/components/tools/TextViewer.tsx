@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, ChangeEvent } from 'react';
 import { Upload, Download, Copy, Check, WrapText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import CompressButton from './CompressButton';
 
 export default function TextViewer() {
     const [text, setText] = useState('');
@@ -80,6 +81,7 @@ export default function TextViewer() {
                     <Button variant="outline" size="sm" onClick={handleDownload} disabled={!text}>
                         <Download className="mr-2 h-4 w-4" /> Download
                     </Button>
+                    <CompressButton text={text} filename={filename} />
                     <Button variant="outline" size="sm" onClick={() => { setText(''); setFilename('untitled.txt'); }} disabled={!text}>
                         <Trash2 className="mr-2 h-4 w-4" /> Clear
                     </Button>

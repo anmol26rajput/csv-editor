@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from '@/components/tools/FileUploader';
 import dynamic from 'next/dynamic';
 const DocxRichEditor = dynamic(() => import('@/components/tools/DocxRichEditor'), { ssr: false });
+import CompressButton from '@/components/tools/CompressButton';
 import { Loader2 } from 'lucide-react';
 
 function DocxToolsContent() {
@@ -67,12 +68,15 @@ function DocxToolsContent() {
                             </span>
                         </h2>
 
-                        <button
-                            onClick={() => setFile(null)}
-                            className="text-sm text-brand-700 hover:text-brand-800 font-medium px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
-                        >
-                            Change file
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CompressButton fileId={file.id} />
+                            <button
+                                onClick={() => setFile(null)}
+                                className="text-sm text-brand-700 hover:text-brand-800 font-medium px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
+                            >
+                                Change file
+                            </button>
+                        </div>
                     </div>
 
                     <div className="w-full">
