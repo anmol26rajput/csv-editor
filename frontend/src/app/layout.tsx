@@ -6,7 +6,8 @@ import { FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import NavLinks from '@/components/NavLinks'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import { SITE_URL, SITE_NAME, SITE_TAGLINE, BASE_KEYWORDS } from '@/lib/seo'
+import { Analytics } from '@vercel/analytics/next'
+import { SITE_URL, SITE_NAME, SITE_TAGLINE, BASE_KEYWORDS, OG_IMAGE } from '@/lib/seo'
 
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-sans' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
@@ -43,11 +44,13 @@ export const metadata: Metadata = {
         description,
         url: SITE_URL,
         locale: 'en_US',
+        images: [OG_IMAGE],
     },
     twitter: {
         card: 'summary_large_image',
         title: `${SITE_NAME} — ${SITE_TAGLINE}`,
         description,
+        images: [OG_IMAGE.url],
     },
     category: 'technology',
 }
@@ -109,6 +112,7 @@ export default function RootLayout({
                 <main id="main" className="flex-1 relative z-10 mx-auto w-full max-w-6xl px-4 py-10">
                     {children}
                     <SpeedInsights />
+                    <Analytics />
                 </main>
 
                 <footer className="relative z-10 border-t border-ink-200/60 py-8">
