@@ -29,6 +29,7 @@ export default function UtilitiesPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Utilities</h1>
                     <p className="mt-2 text-ink-500">
                         JSON, Markdown, Base64, image, and text tools — everything runs in your browser.
+                        Crop, resize, compress, and convert images without uploading them.
                     </p>
                 </div>
 

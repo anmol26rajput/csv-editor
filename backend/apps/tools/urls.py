@@ -6,4 +6,5 @@ urlpatterns = [
     path('docx/', include('apps.tools.docx.urls')),
     path('xlsx/', include('apps.tools.xlsx.urls')),
     path('clean/', include('apps.tools.cleaning.urls')),
+    path('compress/', include('apps.tools.compress.urls')),
 ]

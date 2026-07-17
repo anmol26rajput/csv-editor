@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from '@/components/tools/FileUploader';
 import CSVGrid from '@/components/tools/CSVGrid';
+import CompressButton from '@/components/tools/CompressButton';
 import { Loader2 } from 'lucide-react';
 
 function CSVToolsContent() {
@@ -56,19 +57,22 @@ function CSVToolsContent() {
                 </Card>
             ) : (
                 <div className="space-y-4 animate-fade-in">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap gap-3 justify-between items-center">
                         <h2 className="text-lg font-semibold text-ink-950 flex items-center gap-2">
                             <span>{file.filename}</span>
                             <span className="font-mono text-xs font-normal px-2 py-0.5 bg-ink-100 text-ink-500 rounded-md tabular">
                                 {(file.size_bytes / 1024).toFixed(1)} KB
                             </span>
                         </h2>
-                        <button
-                            onClick={() => setFile(null)}
-                            className="text-sm text-brand-700 hover:text-brand-800 font-medium px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
-                        >
-                            Upload another
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <CompressButton fileId={file.id} />
+                            <button
+                                onClick={() => setFile(null)}
+                                className="text-sm text-brand-700 hover:text-brand-800 font-medium px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
+                            >
+                                Upload another
+                            </button>
+                        </div>
                     </div>
 
                     <CSVGrid file={file} onFileUpdate={setFile} />

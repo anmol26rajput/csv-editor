@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify';
 import { Upload, Download, Copy, Check, Eye, Columns2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import CompressButton from './CompressButton';
 
 const SAMPLE = `# Markdown Viewer
 
@@ -119,6 +120,7 @@ export default function MarkdownViewer() {
                     <Button variant="outline" size="sm" onClick={handleDownload}>
                         <Download className="mr-2 h-4 w-4" /> Download
                     </Button>
+                    <CompressButton text={markdown} filename={filename || 'document.md'} />
                 </div>
             </div>
 

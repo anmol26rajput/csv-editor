@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "drf_spectacular",
     # Local
-    "apps.core",
     "apps.api",
     "apps.documents",
     "apps.tools",

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Merge, Scissors, ArrowUpDown, Repeat, Trash2, PenLine, Loader2 } from 'lucide-react';
+import { Merge, Scissors, ArrowUpDown, Repeat, Trash2, PenLine, FileArchive, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PDFMerge from '@/components/tools/PDFMerge';
 import PDFSplit from '@/components/tools/PDFSplit';
@@ -11,6 +11,7 @@ import PDFRemove from '@/components/tools/PDFRemove';
 import PDFReorder from '@/components/tools/PDFReorder';
 import PDFConvert from '@/components/tools/PDFConvert';
 import PDFTextEditor from '@/components/tools/PDFTextEditor';
+import CompressPanel from '@/components/tools/CompressPanel';
 import { UploadedFile } from '@/components/tools/FileUploader';
 
 const tabs = [
@@ -20,10 +21,13 @@ const tabs = [
     { id: 'split' as const, label: 'Split', icon: Scissors },
     { id: 'remove' as const, label: 'Remove', icon: Trash2 },
     { id: 'reorder' as const, label: 'Reorder', icon: ArrowUpDown },
+    { id: 'compress' as const, label: 'Compress', icon: FileArchive },
 ];
 
+type TabId = typeof tabs[number]['id'];
+
 function PDFToolsContent() {
-    const [activeTab, setActiveTab] = useState<'convert' | 'edit' | 'merge' | 'split' | 'remove' | 'reorder'>('convert');
+    const [activeTab, setActiveTab] = useState<TabId>('convert');
     const [initialFile, setInitialFile] = useState<UploadedFile | null>(null);
     const searchParams = useSearchParams();
     const fileId = searchParams.get('id');
@@ -47,7 +51,7 @@ function PDFToolsContent() {
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div className="max-w-2xl">
                     <h1 className="text-3xl font-bold tracking-tight">PDF tools</h1>
-                    <p className="mt-2 text-ink-500">Convert, merge, split, and reorder your PDF documents.</p>
+                    <p className="mt-2 text-ink-500">Convert, merge, split, reorder, and compress your PDF documents.</p>
                 </div>
 
                 <div className="inline-flex items-center rounded-xl bg-ink-100 p-1">
@@ -73,6 +77,7 @@ function PDFToolsContent() {
                 {activeTab === 'split' && <PDFSplit initialFile={initialFile} />}
                 {activeTab === 'remove' && <PDFRemove initialFile={initialFile} />}
                 {activeTab === 'reorder' && <PDFReorder initialFile={initialFile} />}
+                {activeTab === 'compress' && <CompressPanel initialFile={initialFile} />}
             </div>
         </div>
     );

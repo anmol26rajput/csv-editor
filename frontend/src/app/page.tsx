@@ -49,8 +49,8 @@ const tools = [
         href: '/tools/utilities',
         icon: Braces,
         title: 'Utilities',
-        desc: 'JSON viewer with graph visualization, Markdown preview, Base64 converter, image and text viewers.',
-        meta: 'json · md · base64',
+        desc: 'JSON viewer with graph visualization, Markdown preview, Base64 converter, text viewer, and an image editor that crops, resizes, compresses and converts.',
+        meta: 'json · md · base64 · image',
     },
 ];
 

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import FileUploader, { UploadedFile } from '@/components/tools/FileUploader';
 import XLSXSheet from '@/components/tools/XLSXSheet';
 import XLSXSheetReorder from '@/components/tools/XLSXSheetReorder';
+import CompressButton from '@/components/tools/CompressButton';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -88,6 +89,7 @@ function XLSXToolsContent() {
                                     Reorder sheets
                                 </button>
                             </div>
+                            <CompressButton fileId={file.id} />
                             <button
                                 onClick={() => setFile(null)}
                                 className="text-sm text-brand-700 hover:text-brand-800 font-medium px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
